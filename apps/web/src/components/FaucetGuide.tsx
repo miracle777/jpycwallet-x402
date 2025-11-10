@@ -132,10 +132,6 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
     return chainId && testnetChainIds.includes(chainId);
   };
 
-  const getTokenAmount = () => {
-    return '10000'; // 1万円相当（18桁）を人が読める形で
-  };
-
   return (
     <div style={styles.container}>
       <h3 style={styles.title}>
@@ -185,42 +181,53 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
                   <p><strong>🌐 Block Explorer:</strong> <a href={networkInfo.blockExplorer} target="_blank" rel="noopener noreferrer">{networkInfo.blockExplorer}</a></p>
 
                   <div style={{ marginTop: '15px' }}>
-                    <strong>📋 Faucetからの取得手順:</strong>
+                    <strong>📋 Faucetコントラクトからの取得手順:</strong>
+                    <div style={{ backgroundColor: '#fef3c7', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '13px' }}>
+                      <strong>🏗️ Faucetコントラクト:</strong> {networkInfo.faucetInfo!.contractAddress}
+                    </div>
                     <ul style={styles.stepList}>
                       <li style={styles.stepItem}>
                         <div style={styles.stepNumber}>1</div>
                         <div>
-                          <strong>Faucetコントラクトにアクセス</strong><br />
-                          以下のリンクをクリックして、ブロックチェーンエクスプローラーでFaucetコントラクトを開く
+                          <strong>ウォレットを接続</strong><br />
+                          MetaMaskを{networkInfo.name}ネットワークに切り替え、ガス代用のネイティブトークンを準備
                         </div>
                       </li>
                       <li style={styles.stepItem}>
                         <div style={styles.stepNumber}>2</div>
                         <div>
-                          <strong>sendTokenメソッドを実行</strong><br />
-                          Write Contractタブで「sendToken」メソッドを見つける
+                          <strong>Faucetコントラクトを開く</strong><br />
+                          下のボタンから、ブロックチェーンエクスプローラーのWrite Contractページを開く
                         </div>
                       </li>
                       <li style={styles.stepItem}>
                         <div style={styles.stepNumber}>3</div>
                         <div>
-                          <strong>パラメータを入力</strong><br />
-                          _to: {userAddress ? (
-                            <input 
-                              type="text" 
-                              value={userAddress} 
-                              readOnly 
-                              style={styles.addressInput}
-                            />
-                          ) : 'あなたのウォレットアドレス'}<br />
-                          _amount: {getTokenAmount()}000000000000000000 (1万JPYC)
+                          <strong>sendTokenメソッドを探す</strong><br />
+                          Write Contractセクションで「sendToken」メソッドを見つけてクリック
                         </div>
                       </li>
                       <li style={styles.stepItem}>
                         <div style={styles.stepNumber}>4</div>
                         <div>
-                          <strong>Writeを実行</strong><br />
-                          ウォレットを接続し、トランザクションを実行する
+                          <strong>パラメータを入力</strong><br />
+                          • _to (address): {userAddress ? (
+                            <input 
+                              type="text" 
+                              value={userAddress} 
+                              readOnly 
+                              style={styles.addressInput}
+                              title="あなたのウォレットアドレス（自動入力済み）"
+                            />
+                          ) : 'あなたのウォレットアドレス'}<br />
+                          • _amount (uint256): <code style={{ backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>100000000000000000000000</code> <span style={{ fontSize: '12px', color: '#6b7280' }}>（10^23 = 約1万JPYC）</span>
+                        </div>
+                      </li>
+                      <li style={styles.stepItem}>
+                        <div style={styles.stepNumber}>5</div>
+                        <div>
+                          <strong>Writeボタンを押す</strong><br />
+                          ウォレットでトランザクションを承認し、数分でJPYCが受け取れます
                         </div>
                       </li>
                     </ul>
@@ -236,10 +243,12 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
                   </a>
 
                   <div style={styles.warning}>
-                    <strong>⚠️ 注意:</strong><br />
-                    • 各ネットワークでネイティブトークン（ETH, POL, AVAX）のガス代が必要です<br />
-                    • 1回の実行で最大10,000 JPYCまで取得可能です<br />
-                    • テストネット用のトークンのため、実際の価値はありません
+                    <strong>⚠️ 重要な注意事項:</strong><br />
+                    • ガス代として各ネットワークのネイティブトークン（ETH、POL、AVAX）が必要です<br />
+                    • 1回の実行で最大100,000 JPYC（10^23 wei単位）まで取得可能<br />
+                    • Faucetコントラクトアドレス: {networkInfo.faucetInfo!.contractAddress}<br />
+                    • テストネット用のため実際の価値はありません<br />
+                    • {networkInfo.faucetInfo!.description}
                   </div>
                 </div>
               )}

@@ -16,7 +16,7 @@ export const JPYC_TOKENS: Record<number, TokenInfo> = {
     decimals: 18,
     image: 'https://storage.googleapis.com/jpyc-assets/jpyc-icon.png',
   },
-  // Polygon Amoy Testnet
+  // Polygon Amoy Testnet  
   80002: {
     address: '0xE7C3D8C5E8e84a4fBdE29F8fA9A89AB1b5Dd6b8F',
     symbol: 'JPYC',
@@ -86,6 +86,7 @@ export const NETWORK_INFO: Record<number, {
   faucetInfo?: {
     url: string;
     description: string;
+    contractAddress: string;
   };
 }> = {
   137: {
@@ -98,8 +99,9 @@ export const NETWORK_INFO: Record<number, {
     rpcUrl: 'https://rpc-amoy.polygon.technology',
     blockExplorer: 'https://amoy.polygonscan.com',
     faucetInfo: {
-      url: 'https://amoy.polygonscan.com/address/0x8ca1d8DabaA60231AF875599558beB0A5aeDd52B#writeContract',
-      description: 'FaucetコントラクトのsendTokenメソッドを実行してJPYCを取得できます',
+      url: 'https://amoy.polygonscan.com/address/0x8ca1d8dabaa60231af875599558beb0a5aedd52b#writeContract',
+      description: 'sendTokenメソッドで最大10^23取得可能（約1万円相当）',
+      contractAddress: '0x8ca1d8dabaa60231af875599558beb0a5aedd52b',
     },
   },
   11155111: {
@@ -108,16 +110,18 @@ export const NETWORK_INFO: Record<number, {
     blockExplorer: 'https://sepolia.etherscan.io',
     faucetInfo: {
       url: 'https://sepolia.etherscan.io/address/0x8ca1d8dabaa60231af875599558beb0a5aedd52b#writeContract',
-      description: 'FaucetコントラクトのsendTokenメソッドを実行してJPYCを取得できます',
+      description: 'sendTokenメソッドで最大10^23取得可能（約1万円相当）',
+      contractAddress: '0x8ca1d8dabaa60231af875599558beb0a5aedd52b',
     },
   },
   43113: {
     name: 'Avalanche Fuji',
     rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
-    blockExplorer: 'https://testnet.avascan.info',
+    blockExplorer: 'https://testnet.snowtrace.io',
     faucetInfo: {
-      url: 'https://testnet.avascan.info/blockchain/all/address/0x8ca1d8DabaA60231AF875599558beB0A5aeDd52B#contract',
-      description: 'FaucetコントラクトのsendTokenメソッドを実行してJPYCを取得できます',
+      url: 'https://testnet.snowtrace.io/address/0x8ca1d8dabaa60231af875599558beb0a5aedd52b#writeContract',
+      description: 'sendTokenメソッドで最大10^23取得可能（約1万円相当）',
+      contractAddress: '0x8ca1d8dabaa60231af875599558beb0a5aedd52b',
     },
   },
 };
