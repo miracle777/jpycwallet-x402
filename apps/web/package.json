@@ -12,8 +12,13 @@
   "dependencies": {
     "@ambire/login-sdk-core": "^0.1.7",
     "@ambire/login-sdk-web3-onboard": "^0.2.5",
+    "@types/qrcode": "^1.5.6",
     "@web3-onboard/core": "^2.24.1",
+    "@web3-onboard/injected-wallets": "^2.11.3",
+    "@web3-onboard/walletconnect": "^2.6.3",
     "ethers": "^6.15.0",
+    "qr-scanner": "^1.4.2",
+    "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

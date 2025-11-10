@@ -1,35 +1,81 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from "react";
+import { ethers } from "ethers";
+import AmbireLogin from "./AmbireLogin";
+import QRPayment from "./components/QRPayment";
+import ShoppingCart from "./components/ShoppingCart";
+import SubscriptionManager from "./components/SubscriptionManager";
+import GaslessPayment from "./components/GaslessPayment";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [walletData, setWalletData] = useState<{
+    address: string | null;
+    signer: ethers.Signer | null;
+  }>({ address: null, signer: null });
+
+  const handleWalletConnect = (address: string, signer: ethers.Signer) => {
+    setWalletData({ address, signer });
+  };
+
+  const handleWalletDisconnect = () => {
+    setWalletData({ address: null, signer: null });
+  };
+
+  const handlePaymentComplete = (txHash: string) => {
+    alert(`決済が完了しました！\nトランザクションハッシュ: ${txHash}`);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div style={{ minHeight: "100vh", backgroundColor: "#f9fafb", padding: "20px" }}>
+      <h1 style={{ textAlign: "center", marginTop: "1rem", marginBottom: "2rem" }}>
+        JPYC Wallet x402
+      </h1>
+      
+      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+        {/* ウォレット接続 */}
+        <AmbireLogin 
+          onConnect={handleWalletConnect}
+          onDisconnect={handleWalletDisconnect}
+        />
+        
+        {/* QR決済機能 */}
+        {walletData.address && walletData.signer && (
+          <div style={{ marginTop: "30px" }}>
+            <QRPayment
+              currentAddress={walletData.address}
+              signer={walletData.signer}
+              onPaymentComplete={handlePaymentComplete}
+            />
+          </div>
+        )}
+
+        {/* ショッピングカート機能 */}
+        <div style={{ marginTop: "30px" }}>
+          <ShoppingCart
+            currentAddress={walletData.address || undefined}
+            signer={walletData.signer || undefined}
+            onPaymentComplete={(txHash, amount) => handlePaymentComplete(txHash)}
+          />
+        </div>
+
+        {/* サブスクリプション管理 */}
+        <div style={{ marginTop: "30px" }}>
+          <SubscriptionManager
+            currentAddress={walletData.address || undefined}
+            signer={walletData.signer || undefined}
+            onPaymentComplete={(txHash, amount) => handlePaymentComplete(txHash)}
+          />
+        </div>
+
+        {/* ガスレス送付（実験的機能） */}
+        <div style={{ marginTop: "30px" }}>
+          <GaslessPayment
+            currentAddress={walletData.address || undefined}
+            signer={walletData.signer || undefined}
+          />
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </div>
+  );
 }
 
-export default App
+export default App;
