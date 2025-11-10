@@ -16,7 +16,25 @@ export async function readBalance(addr: string) {
   return Number(ethers.formatUnits(bal, decimals));
 }
 
+export async function checkSufficientBalance(signer: ethers.Signer, amountJPYC: string): Promise<{ sufficient: boolean; currentBalance: number; required: number }> {
+  const address = await signer.getAddress();
+  const currentBalance = await readBalance(address);
+  const required = parseFloat(amountJPYC);
+  
+  return {
+    sufficient: currentBalance >= required,
+    currentBalance,
+    required,
+  };
+}
+
 export async function transferJPYC(signer: ethers.Signer, to: string, amountJPYC: string) {
+  // 残高チェック
+  const balanceCheck = await checkSufficientBalance(signer, amountJPYC);
+  if (!balanceCheck.sufficient) {
+    throw new Error(`JPYC残高が不足しています。必要: ${balanceCheck.required} JPYC, 現在: ${balanceCheck.currentBalance} JPYC`);
+  }
+
   const c = getErc20Contract(signer);
   const decimals: number = await c.decimals();
   const amount = ethers.parseUnits(amountJPYC, decimals);

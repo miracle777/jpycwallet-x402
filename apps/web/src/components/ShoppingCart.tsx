@@ -1,6 +1,6 @@
 import React, { useState, useReducer } from 'react';
 import { ethers } from 'ethers';
-import { transferJPYC } from '../lib/jpyc';
+import { transferJPYC, checkSufficientBalance } from '../lib/jpyc';
 import { sampleProducts, merchantAddress } from '../lib/products';
 import type { Cart, CartItem, Product } from '../lib/types';
 
@@ -102,8 +102,23 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
     setSuccess('');
 
     try {
-      // カート内容をまとめて決済
       const totalAmount = cart.total.toString();
+      
+      // 残高チェック
+      const balanceCheck = await checkSufficientBalance(signer, totalAmount);
+      if (!balanceCheck.sufficient) {
+        setError(
+          `JPYC残高が不足しています。\n` +
+          `必要金額: ${balanceCheck.required} JPYC\n` +
+          `現在残高: ${balanceCheck.currentBalance} JPYC\n` +
+          `不足分: ${(balanceCheck.required - balanceCheck.currentBalance).toFixed(2)} JPYC\n\n` +
+          `💧 テスト用JPYCの取得方法:\n` +
+          `ウォレット接続画面のFaucetリンクから取得できます。`
+        );
+        return;
+      }
+
+      // カート内容をまとめて決済
       const description = `購入商品: ${cart.items.map(item => 
         `${item.product.name}×${item.quantity}`
       ).join(', ')}`;
@@ -116,7 +131,21 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
       // カートをクリア
       clearCart();
     } catch (e: any) {
-      setError(`決済に失敗しました: ${e.message || 'Unknown error'}`);
+      let errorMessage = e.message || 'Unknown error';
+      
+      if (errorMessage.includes('JPYC残高が不足しています')) {
+        setError(errorMessage);
+      } else if (errorMessage.includes('invalid value for Contract target')) {
+        setError(
+          'JPYCトークンが見つかりません。\n' +
+          '1. ウォレットにJPYCトークンを追加してください\n' +
+          '2. テストネットの場合は、Faucetからテスト用JPYCを取得してください'
+        );
+      } else if (errorMessage.includes('user rejected')) {
+        setError('ユーザーによって取引がキャンセルされました');
+      } else {
+        setError(`決済に失敗しました: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }

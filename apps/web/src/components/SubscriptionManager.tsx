@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { transferJPYC } from '../lib/jpyc';
+import { transferJPYC, checkSufficientBalance } from '../lib/jpyc';
 import { merchantAddress } from '../lib/products';
+import { NETWORK_INFO } from '../lib/wallet-utils';
 import { 
   subscriptionPlans, 
   getUserSubscriptions, 
@@ -52,6 +53,21 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({
     setSuccess('');
 
     try {
+      // 残高チェック
+      const balanceCheck = await checkSufficientBalance(signer, plan.price.toString());
+      if (!balanceCheck.sufficient) {
+        setError(
+          `JPYC残高が不足しています。\n` +
+          `必要金額: ${balanceCheck.required} JPYC\n` +
+          `現在残高: ${balanceCheck.currentBalance} JPYC\n` +
+          `不足分: ${(balanceCheck.required - balanceCheck.currentBalance).toFixed(2)} JPYC\n\n` +
+          `💧 テストJPYCの取得方法:\n` +
+          `Faucetコントラクトからテスト用JPYCを取得できます。\n` +
+          `詳細はウォレット接続後の「テストネットワーク情報」をご確認ください。`
+        );
+        return;
+      }
+
       // サブスクリプション料金の支払い
       const receipt = await transferJPYC(signer, merchantAddress, plan.price.toString());
       
@@ -74,7 +90,24 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({
       setSuccess(`${plan.name}プランに登録しました！ TxHash: ${receipt.hash}`);
       onPaymentComplete?.(receipt.hash, plan.price);
     } catch (e: any) {
-      setError(`サブスクリプション登録に失敗しました: ${e.message || 'Unknown error'}`);
+      // エラーメッセージを解析して、より分かりやすい表示に
+      let errorMessage = e.message || 'Unknown error';
+      
+      if (errorMessage.includes('JPYC残高が不足しています')) {
+        // 既に詳細なエラーメッセージが入っている場合はそのまま使用
+        setError(errorMessage);
+      } else if (errorMessage.includes('invalid value for Contract target')) {
+        setError(
+          'JPYCトークンが見つかりません。\n' +
+          '1. ウォレットにJPYCトークンを追加してください\n' +
+          '2. テストネットの場合は、Faucetからテスト用JPYCを取得してください\n' +
+          '3. 正しいネットワークに接続していることを確認してください'
+        );
+      } else if (errorMessage.includes('user rejected')) {
+        setError('ユーザーによって取引がキャンセルされました');
+      } else {
+        setError(`サブスクリプション登録に失敗しました: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }

@@ -22,6 +22,12 @@ const CHAIN_PARAMS = {
     label: "Ethereum Sepolia",
     rpcUrl: "https://rpc.sepolia.org",
   },
+  "avalanche-fuji": {
+    id: "0xa869",
+    token: "AVAX",
+    label: "Avalanche Fuji",
+    rpcUrl: "https://api.avax-test.network/ext/bc/C/rpc",
+  },
 } as const;
 
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "demo";

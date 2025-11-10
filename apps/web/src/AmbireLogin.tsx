@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ethers } from "ethers";
 import { getOnboard, CHAINS, type ChainKey } from "./lib/onboard";
 import { readBalance } from "./lib/jpyc";
+import { addJPYCToWallet, getCurrentJPYCToken, NETWORK_INFO } from "./lib/wallet-utils";
 
 interface AmbireLoginProps {
   onConnect?: (address: string, signer: ethers.Signer) => void;
@@ -15,6 +16,7 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
   const [tokenSymbol, setTokenSymbol] = useState("JPYC");
   const [loading, setLoading] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [showTokenAdd, setShowTokenAdd] = useState(false);
 
   const defaultChainKey =
     (import.meta.env.VITE_DEFAULT_CHAIN as ChainKey) || "polygon-amoy";
@@ -32,7 +34,36 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
     setNativeBalance(null);
     setTokenBalance(null);
     setErrMsg(null);
+    setShowTokenAdd(false);
     onDisconnect?.();
+  }
+
+  async function addJPYCToken() {
+    try {
+      const onboard = getOnboard();
+      const wallets = onboard.state.get().wallets;
+      if (wallets.length > 0) {
+        const provider = wallets[0].provider;
+        const success = await addJPYCToWallet(provider);
+        if (success) {
+          setErrMsg("JPYCトークンがウォレットに追加されました！");
+          setShowTokenAdd(false);
+          // 残高を再取得
+          if (address) {
+            try {
+              const bal = await readBalance(address);
+              setTokenBalance(String(bal));
+            } catch (e) {
+              console.error("Balance refresh error:", e);
+            }
+          }
+        } else {
+          setErrMsg("JPYCトークンの追加に失敗しました");
+        }
+      }
+    } catch (e: any) {
+      setErrMsg(`トークン追加エラー: ${e.message}`);
+    }
   }
 
   async function connectBy(label: "MetaMask" | "WalletConnect") {
@@ -72,9 +103,15 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
         const bal = await readBalance(addr);
         setTokenBalance(String(bal));
         setTokenSymbol("JPYC");
+        
+        // 残高が0の場合、トークン追加オプションを表示
+        if (bal === 0) {
+          setShowTokenAdd(true);
+        }
       } catch (e) {
         console.error("JPYC balance read error:", e);
         setTokenBalance(null);
+        setShowTokenAdd(true); // エラーの場合もトークン追加オプションを表示
       }
 
       // App.tsxのコールバックを呼び出し
@@ -157,6 +194,70 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
           <div>
             <strong>{tokenSymbol} Balance:</strong> {tokenBalance ?? "—"}
           </div>
+          
+          {/* JPYCトークン追加機能 */}
+          {showTokenAdd && (
+            <div style={{ 
+              marginTop: '15px', 
+              padding: '10px', 
+              backgroundColor: '#fffbeb', 
+              border: '1px solid #f59e0b', 
+              borderRadius: '8px' 
+            }}>
+              <div style={{ fontSize: '14px', marginBottom: '10px' }}>
+                💡 JPYCトークンが表示されない場合は、ウォレットに追加してください
+              </div>
+              <button
+                style={{
+                  ...btn.base,
+                  backgroundColor: '#f59e0b',
+                  color: '#fff',
+                  fontSize: '14px',
+                  padding: '8px 16px',
+                  marginRight: '10px',
+                }}
+                onClick={addJPYCToken}
+              >
+                ➕ JPYCをウォレットに追加
+              </button>
+            </div>
+          )}
+
+          {/* テストネット情報 */}
+          {chain.id !== "0x89" && (
+            <div style={{
+              marginTop: '15px',
+              padding: '10px',
+              backgroundColor: '#eff6ff',
+              border: '1px solid #3b82f6',
+              borderRadius: '8px',
+              fontSize: '14px',
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: '5px' }}>
+                🧪 テストネットワーク情報
+              </div>
+              <div>
+                このネットワークではテスト用JPYCを使用します。
+              </div>
+              {NETWORK_INFO[parseInt(chain.id, 16)]?.faucetInfo && (
+                <div style={{ marginTop: '8px' }}>
+                  <strong>💧 テストJPYC取得:</strong><br />
+                  <a 
+                    href={NETWORK_INFO[parseInt(chain.id, 16)].faucetInfo!.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: '#2563eb' }}
+                  >
+                    Faucetで取得 →
+                  </a>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    {NETWORK_INFO[parseInt(chain.id, 16)].faucetInfo!.description}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ marginTop: '15px' }}>
             <button
               style={{ ...btn.base, backgroundColor: '#dc2626', color: '#fff' }}

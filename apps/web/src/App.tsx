@@ -5,12 +5,17 @@ import QRPayment from "./components/QRPayment";
 import ShoppingCart from "./components/ShoppingCart";
 import SubscriptionManager from "./components/SubscriptionManager";
 import GaslessPayment from "./components/GaslessPayment";
+import NetworkSelector from "./components/NetworkSelector";
+import FaucetGuide from "./components/FaucetGuide";
+import type { ChainKey } from "./lib/onboard";
 
 function App() {
   const [walletData, setWalletData] = useState<{
     address: string | null;
     signer: ethers.Signer | null;
   }>({ address: null, signer: null });
+
+  const [selectedNetwork, setSelectedNetwork] = useState<ChainKey>('polygon-amoy');
 
   const handleWalletConnect = (address: string, signer: ethers.Signer) => {
     setWalletData({ address, signer });
@@ -31,6 +36,22 @@ function App() {
       </h1>
       
       <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+        {/* ネットワーク選択 */}
+        <NetworkSelector
+          currentNetwork={selectedNetwork}
+          onNetworkChange={setSelectedNetwork}
+          disabled={!!walletData.address}
+        />
+        
+        {/* テスト用JPYC取得ガイド */}
+        <FaucetGuide
+          chainId={selectedNetwork === 'polygon' ? 137 : 
+                   selectedNetwork === 'polygon-amoy' ? 80002 :
+                   selectedNetwork === 'sepolia' ? 11155111 :
+                   selectedNetwork === 'avalanche-fuji' ? 43113 : undefined}
+          userAddress={walletData.address || undefined}
+        />
+        
         {/* ウォレット接続 */}
         <AmbireLogin 
           onConnect={handleWalletConnect}
