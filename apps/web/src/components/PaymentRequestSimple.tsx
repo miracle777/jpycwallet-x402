@@ -10,13 +10,18 @@ import {
   merchantCategories,
   type QRCodeFormat 
 } from '../lib/merchant';
+import { networkConfigs, type NetworkConfig } from '../lib/chain';
 
 interface PaymentRequestProps {
-  onQRGenerated?: (qrData: string) => void;
-  currentAddress?: string; // ウォレットアドレスを受け取る
+  onQRGenerated?: (qrData: string, amount?: string, merchant?: any) => void;
+  currentAddress?: string;
 }
 
 const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated, currentAddress }) => {
+  // ネットワーク選択
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('sepolia-official');
+  const [networkConfig, setNetworkConfig] = useState<NetworkConfig>(networkConfigs['sepolia-official']);
+  
   // 基本情報
   const [amount, setAmount] = useState<string>('100');
   const [currency, setCurrency] = useState<string>('JPYC');
@@ -48,6 +53,20 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated, currentA
       }));
     }
   }, [currentAddress]);
+
+  // ネットワーク変更時にコンフィグを更新
+  useEffect(() => {
+    const config = networkConfigs[selectedNetwork];
+    if (config) {
+      setNetworkConfig(config);
+      // マーチャント情報のコントラクトアドレスも更新
+      setMerchant(prev => ({
+        ...prev,
+        contractAddress: config.jpycAddress,
+        chainId: config.chainId
+      }));
+    }
+  }, [selectedNetwork]);
 
   // 店舗情報の更新
   const updateMerchant = (field: keyof MerchantInfo, value: string) => {
@@ -119,7 +138,9 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated, currentA
       });
 
       setQrCodeURL(qrCodeDataURL);
-      onQRGenerated?.(data);
+      
+      // マーチャント情報と金額も一緒に渡す
+      onQRGenerated?.(data, amount, merchant);
 
     } catch (error) {
       console.error('QRコード生成エラー:', error);
@@ -155,6 +176,90 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated, currentA
           📱 決済QRコード生成
         </h2>
         <p style={{ margin: 0, color: '#6b7280' }}>店舗情報付きの決済QRコードを生成できます</p>
+      </div>
+
+      {/* ネットワーク選択セクション */}
+      <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
+        <h3 style={{ margin: '0 0 15px 0', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>
+          🌐 ネットワーク選択
+        </h3>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+          {Object.entries(networkConfigs).map(([key, config]) => {
+            const isSelected = selectedNetwork === key;
+            const isTestnet = config.faucetUrl !== undefined;
+            
+            return (
+              <div
+                key={key}
+                onClick={() => setSelectedNetwork(key)}
+                style={{
+                  padding: '12px',
+                  border: `2px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
+                  borderRadius: '8px',
+                  backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>
+                  {config.name} {isSelected && '✅'}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>
+                  Chain ID: {config.chainId}
+                </div>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {isTestnet ? (
+                    <span style={{ 
+                      padding: '2px 6px', 
+                      borderRadius: '10px', 
+                      fontSize: '11px', 
+                      fontWeight: '500',
+                      backgroundColor: '#fef3c7',
+                      color: '#92400e'
+                    }}>
+                      🧪 Testnet
+                    </span>
+                  ) : (
+                    <span style={{ 
+                      padding: '2px 6px', 
+                      borderRadius: '10px', 
+                      fontSize: '11px', 
+                      fontWeight: '500',
+                      backgroundColor: '#dcfce7',
+                      color: '#166534'
+                    }}>
+                      🔴 Mainnet
+                    </span>
+                  )}
+                  <span style={{ 
+                    padding: '2px 6px', 
+                    borderRadius: '10px', 
+                    fontSize: '11px', 
+                    fontWeight: '500',
+                    backgroundColor: '#dbeafe',
+                    color: '#1e40af'
+                  }}>
+                    💰 JPYC
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        <div style={{ 
+          marginTop: '12px', 
+          padding: '10px', 
+          backgroundColor: '#f0fdf4', 
+          border: '1px solid #86efac', 
+          borderRadius: '6px',
+          fontSize: '13px',
+          color: '#166534'
+        }}>
+          ✅ 選択中: <strong>{networkConfig.name}</strong><br />
+          📍 JPYC アドレス: <code style={{ fontSize: '11px' }}>{networkConfig.jpycAddress}</code>
+        </div>
       </div>
 
       {/* 店舗情報セクション */}

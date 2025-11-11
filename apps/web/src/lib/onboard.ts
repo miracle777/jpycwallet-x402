@@ -20,7 +20,7 @@ const CHAIN_PARAMS = {
     id: "0xaa36a7",
     token: "ETH",
     label: "Ethereum Sepolia",
-    rpcUrl: "https://rpc.sepolia.org",
+    rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
   },
   "avalanche-fuji": {
     id: "0xa869",

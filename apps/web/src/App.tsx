@@ -11,13 +11,16 @@ import X402SubscriptionTestPage from "./components/X402SubscriptionTestPage";
 import SubscriptionMerchantDashboard from "./components/SubscriptionMerchantDashboard";
 import MerchantPaymentRequest from "./components/MerchantPaymentRequest";
 import PaymentRequestSimple from "./components/PaymentRequestSimple";
+import PaymentSuccess from "./components/PaymentSuccess";
+import PaymentWatcher from "./components/PaymentWatcher";
 import type { ChainKey } from "./lib/onboard";
 
 function App() {
   const [walletData, setWalletData] = useState<{
     address: string | null;
     signer: ethers.Signer | null;
-  }>({ address: null, signer: null });
+    walletName?: string;
+  }>({ address: null, signer: null, walletName: undefined });
 
   const [selectedNetwork, setSelectedNetwork] = useState<ChainKey>('sepolia');
   const [activeTab, setActiveTab] = useState<'payment' | 'x402-simple' | 'x402-subscription' | 'sepolia-gasless'>('x402-simple');
@@ -58,15 +61,17 @@ function App() {
   const [qrCodeData, setQrCodeData] = useState<string>('');
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [merchantInfo, setMerchantInfo] = useState<any>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [contractAddress, setContractAddress] = useState<string>('0xd3eF95d29A198868241FE374A999fc25F6152253'); // デフォルトはコミュニティJPYC
 
-  const handleWalletConnect = (address: string, signer: ethers.Signer) => {
-    console.log('📱 Wallet connected:', address);
-    setWalletData({ address, signer });
+  const handleWalletConnect = (address: string, signer: ethers.Signer, walletName?: string) => {
+    console.log('📱 Wallet connected:', address, 'Wallet:', walletName);
+    setWalletData({ address, signer, walletName });
   };
 
   const handleWalletDisconnect = () => {
     console.log('🔌 Wallet disconnected');
-    setWalletData({ address: null, signer: null });
+    setWalletData({ address: null, signer: null, walletName: undefined });
   };
 
   const handleNetworkChange = (network: ChainKey) => {
@@ -78,13 +83,53 @@ function App() {
   };
 
   const handlePaymentComplete = (txHash: string) => {
-    alert(`決済が完了しました！\nトランザクションハッシュ: ${txHash}`);
+    console.log('決済完了:', txHash);
+    setTxHash(txHash);
+  };
+
+  const startNewPayment = () => {
+    setTxHash(null);
+    setQrCodeData('');
+    setPaymentAmount('');
+    setContractAddress('0xd3eF95d29A198868241FE374A999fc25F6152253'); // デフォルトにリセット
   };
 
   const handleQRGenerated = (qrData: string, amount?: string, merchant?: any) => {
+    console.log('📱 QRコード生成:', { qrData, amount, merchant });
     setQrCodeData(qrData);
-    if (amount) setPaymentAmount(amount);
-    if (merchant) setMerchantInfo(merchant);
+    
+    // QRデータをパースして金額と受取アドレスを抽出
+    try {
+      const parsed = JSON.parse(qrData);
+      console.log('📋 パース結果:', parsed);
+      
+      // 金額を設定
+      if (parsed.amount) {
+        setPaymentAmount(parsed.amount);
+        console.log('💰 決済金額設定:', parsed.amount);
+      } else if (amount) {
+        setPaymentAmount(amount);
+      }
+      
+      // コントラクトアドレスを設定
+      if (parsed.contractAddress) {
+        setContractAddress(parsed.contractAddress);
+        console.log('📝 コントラクトアドレス設定:', parsed.contractAddress);
+      }
+      
+      // マーチャント情報を設定
+      if (parsed.merchantInfo || parsed.merchant) {
+        const merchantData = parsed.merchantInfo || parsed.merchant;
+        setMerchantInfo(merchantData);
+        console.log('🏪 マーチャント情報設定:', merchantData);
+      } else if (merchant) {
+        setMerchantInfo(merchant);
+      }
+    } catch (e) {
+      console.error('QRデータのパースに失敗:', e);
+      if (amount) setPaymentAmount(amount);
+      if (merchant) setMerchantInfo(merchant);
+    }
   };
 
   const handleQRRefresh = () => {
@@ -378,6 +423,7 @@ function App() {
                     <SepoliaGasless
                       currentAddress={walletData.address || undefined}
                       signer={walletData.signer || undefined}
+                      walletName={walletData.walletName}
                     />
                   )}
                 </div>
@@ -426,7 +472,16 @@ function App() {
                   </div>
                 )}
 
-                {qrCodeData ? (
+                {txHash ? (
+                  /* 決済完了表示 */
+                  <div className="qr-code-container mt-6">
+                    <PaymentSuccess 
+                      txHash={txHash}
+                      amount={paymentAmount}
+                      onNewPayment={startNewPayment}
+                    />
+                  </div>
+                ) : qrCodeData ? (
                   /* QRコード表示エリア */
                   <div className="qr-code-container mt-6">
                     <QRCodeDisplay 
@@ -435,6 +490,16 @@ function App() {
                       merchantInfo={merchantInfo}
                       onRefresh={handleQRRefresh}
                     />
+                    {/* 決済監視コンポーネント */}
+                    {merchantInfo?.recipientAddress && paymentAmount && contractAddress && (
+                      <PaymentWatcher
+                        amount={paymentAmount}
+                        recipientAddress={merchantInfo.recipientAddress}
+                        onSuccess={handlePaymentComplete}
+                        contractAddress={contractAddress}
+                        enabled={true}
+                      />
+                    )}
                   </div>
                 ) : (
                   /* QRコード未生成時のプレースホルダー */

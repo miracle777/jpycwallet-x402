@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+https://www.jpyc.cool/import React, { useState, useRef } from 'react';
 import QrScanner from 'qr-scanner';
 import { generateQRCode, createPaymentRequest, qrDataToPaymentRequest, isPaymentRequestValid } from '../lib/qr-payment';
 import { transferJPYC } from '../lib/jpyc';
@@ -113,7 +113,11 @@ const QRPayment: React.FC<QRPaymentProps> = ({
     
     try {
       const receipt = await transferJPYC(signer, paymentRequest.to, paymentRequest.amount);
-      setSuccess(`支払いが完了しました！ TxHash: ${receipt.hash}`);
+      const successMessage = 
+        `💰 送金額: ${paymentRequest.amount} JPYC\n` +
+        `📍 送金先: ${paymentRequest.to}\n` +
+        `🔗 TxHash: ${receipt.hash}`;
+      setSuccess(successMessage);
       setPaymentRequest(null);
       onPaymentComplete?.(receipt.hash);
     } catch (e: any) {
@@ -198,9 +202,18 @@ const QRPayment: React.FC<QRPaymentProps> = ({
     success: {
       color: '#059669',
       backgroundColor: '#d1fae5',
-      padding: '10px',
-      borderRadius: '8px',
+      padding: '20px',
+      borderRadius: '12px',
       marginBottom: '15px',
+      border: '2px solid #10b981',
+      fontSize: '14px',
+      lineHeight: '1.6',
+      whiteSpace: 'pre-line' as const,
+    },
+    successIcon: {
+      fontSize: '48px',
+      textAlign: 'center' as const,
+      marginBottom: '10px',
     },
   };
 
@@ -230,9 +243,8 @@ const QRPayment: React.FC<QRPaymentProps> = ({
         </button>
       </div>
 
-      {/* エラー・成功メッセージ */}
+      {/* エラーメッセージ */}
       {error && <div style={styles.error}>{error}</div>}
-      {success && <div style={styles.success}>{success}</div>}
 
       {/* QR生成モード */}
       {mode === 'generate' && (
@@ -292,13 +304,38 @@ const QRPayment: React.FC<QRPaymentProps> = ({
             </div>
           )}
           
-          {!paymentRequest ? (
-            <div>
+          {success ? (
+            <div style={styles.qrDisplay}>
+              <div style={styles.successIcon}>✅</div>
+              <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '22px', marginBottom: '20px', color: '#059669' }}>
+                QRコード決済完了
+              </div>
+              <div style={{
+                ...styles.success,
+                textAlign: 'left',
+                marginBottom: '20px'
+              }}>
+                {success}
+              </div>
+              <button 
+                onClick={resetState} 
+                style={{
+                  ...styles.button, 
+                  ...styles.activeButton,
+                  width: '100%',
+                  padding: '12px 20px'
+                }}
+              >
+                新しいQRコードをスキャン
+              </button>
+            </div>
+          ) : !paymentRequest ? (
+            <div style={styles.qrDisplay}>
               <video ref={videoRef} style={styles.video} />
-              <div style={{ textAlign: 'center', marginTop: '10px' }}>
+              <div style={{ textAlign: 'center', marginTop: '15px' }}>
                 <button
                   onClick={startScanning}
-                  style={{...styles.button, ...styles.activeButton}}
+                  style={{...styles.button, ...styles.activeButton, marginRight: '10px'}}
                   disabled={!currentAddress}
                 >
                   📷 スキャン開始

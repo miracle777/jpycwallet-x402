@@ -46,7 +46,7 @@ const defaultNetworkConfig: Record<string, NetworkConfig> = {
     currency: 'JPYC',
     asset: '0xd3eF95d29A198868241FE374A999fc25F6152253',
     decimals: 18,
-    rpcUrl: 'https://rpc.sepolia.org'
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com'
   },
   'sepolia-official': {
     chainId: 11155111n,
@@ -54,7 +54,7 @@ const defaultNetworkConfig: Record<string, NetworkConfig> = {
     currency: 'JPYC',
     asset: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB',
     decimals: 18,
-    rpcUrl: 'https://rpc.sepolia.org'
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com'
   },
   'avalanche-fuji': {
     chainId: 43113n,

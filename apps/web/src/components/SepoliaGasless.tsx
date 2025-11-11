@@ -5,12 +5,40 @@ interface SepoliaGaslessProps {
   currentAddress?: string;
   signer?: ethers.Signer;
   onPaymentComplete?: (txHash: string) => void;
+  walletName?: string; // ウォレット名を追加
 }
+
+// ネットワーク設定
+interface NetworkConfig {
+  chainId: number;
+  name: string;
+  jpycAddress: string;
+  rpcUrl: string;
+  blockExplorer: string;
+}
+
+const NETWORKS: Record<string, NetworkConfig> = {
+  'sepolia': {
+    chainId: 11155111,
+    name: 'Ethereum Sepolia',
+    jpycAddress: '0xd3eF95d29A198868241FE374A999fc25F6152253',
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
+    blockExplorer: 'https://sepolia.etherscan.io'
+  },
+  'sepolia-official': {
+    chainId: 11155111,
+    name: 'Ethereum Sepolia (公式)',
+    jpycAddress: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB',
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
+    blockExplorer: 'https://sepolia.etherscan.io'
+  }
+};
 
 const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
   currentAddress,
   signer,
   onPaymentComplete,
+  walletName = 'Unknown',
 }) => {
   const [recipientAddress, setRecipientAddress] = useState('');
   const [amount, setAmount] = useState('10');
@@ -18,6 +46,38 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [gaslessMode, setGaslessMode] = useState<'meta-transaction' | 'paymaster' | 'relayer'>('meta-transaction');
+  const [jpycBalance, setJpycBalance] = useState<string>('');
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('sepolia');
+
+  // Ambire Wallet チェック
+  const isAmbireWallet = walletName?.toLowerCase().includes('ambire') || false;
+
+  // JPYC残高チェック
+  const checkJpycBalance = async () => {
+    if (!signer || !currentAddress) return;
+    
+    try {
+      const network = NETWORKS[selectedNetwork];
+      const jpycContract = new ethers.Contract(
+        network.jpycAddress,
+        ['function balanceOf(address) view returns (uint256)'],
+        signer
+      );
+      
+      const balance = await jpycContract.balanceOf(currentAddress);
+      const balanceFormatted = ethers.formatUnits(balance, 18);
+      setJpycBalance(balanceFormatted);
+    } catch (e) {
+      console.error('残高取得エラー:', e);
+    }
+  };
+
+  // ウォレット接続時・ネットワーク変更時に残高をチェック
+  React.useEffect(() => {
+    if (currentAddress && signer) {
+      checkJpycBalance();
+    }
+  }, [currentAddress, signer, selectedNetwork]);
 
   const executeGaslessTransfer = async () => {
     if (!signer || !currentAddress || !recipientAddress || !amount) {
@@ -34,6 +94,23 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('送付金額は正の数値を入力してください');
       return;
+    }
+
+    // 残高チェック
+    if (jpycBalance) {
+      const balanceNum = parseFloat(jpycBalance);
+      if (balanceNum < amountNum) {
+        setError(
+          `❌ JPYC残高が不足しています\n\n` +
+          `現在の残高: ${jpycBalance} JPYC\n` +
+          `送金額: ${amount} JPYC\n` +
+          `不足額: ${(amountNum - balanceNum).toFixed(2)} JPYC\n\n` +
+          `📋 解決方法:\n` +
+          `1. アプリ内の「Faucetガイド」から JPYC を取得\n` +
+          `2. Sepolia JPYC Faucet でテスト用 JPYC を入手`
+        );
+        return;
+      }
     }
 
     setLoading(true);
@@ -55,14 +132,19 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
           break;
       }
 
-      setSuccess(
-        `ガスレス送金が完了しました！\n` +
-        `モード: ${getModeName(gaslessMode)}\n` +
-        `金額: ${amount} JPYC\n` +
-        `受取人: ${recipientAddress}\n` +
-        `TxHash: ${txHash}`
-      );
+      const successMessage = 
+        `✅ ガスレス決済が完了しました！\n\n` +
+        `⚡ 実行モード: ${getModeName(gaslessMode)}\n` +
+        `💰 送金額: ${amount} JPYC\n` +
+        `📍 送金先: ${recipientAddress}\n` +
+        `🔗 TxHash: ${txHash}\n\n` +
+        `ガスレス決済処理が正常に完了しました。`;
+      
+      setSuccess(successMessage);
       onPaymentComplete?.(txHash);
+      
+      // 残高を更新
+      await checkJpycBalance();
 
     } catch (e: any) {
       let errorMessage = e.message || 'Unknown error';
@@ -90,90 +172,86 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
     
     console.log('🔄 メタトランザクション実行中...');
     
-    // メタトランザクション実装
-    const messageData = {
-      from: currentAddress,
-      to: recipientAddress,
-      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
-      nonce: await signer.provider!.getTransactionCount(currentAddress!),
-      gasLimit: '21000',
-      data: '0x',
-      chainId: 11155111 // Sepolia
-    };
+    const nonce = await signer.provider!.getTransactionCount(currentAddress!);
+    const network = NETWORKS[selectedNetwork];
+    
+    // 人間が読みやすい署名メッセージ
+    const readableMessage = 
+      `🔄 ガスレス JPYC 送金\n\n` +
+      `送信者: ${currentAddress}\n` +
+      `受取人: ${recipientAddress}\n` +
+      `金額: ${amount} JPYC\n` +
+      `Nonce: ${nonce}\n` +
+      `ネットワーク: ${network.name} (Chain ID: ${network.chainId})\n\n` +
+      `このメッセージに署名することで、上記の送金を承認します。`;
 
-    // EIP-712 署名
-    const message = JSON.stringify(messageData);
-    const signature = await signer.signMessage(message);
+    // 署名
+    const signature = await signer.signMessage(readableMessage);
     
     console.log('📝 署名完了:', signature.slice(0, 20) + '...');
     
-    // リレーヤーシミュレーション - 実際のJPYC送金実行
-    const tx = await signer.sendTransaction({
-      to: recipientAddress,
-      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
-      gasLimit: 21000
-    });
+    // JPYC トークン送金（ERC20 transfer）
+    // Convert amount to wei (18 decimals) only for the contract call
+    const amountWei = ethers.parseUnits(amount, 18);
+    
+    // ERC20 ABI for transfer function
+    const jpycContract = new ethers.Contract(
+      network.jpycAddress,
+      ['function transfer(address to, uint256 amount) returns (bool)'],
+      signer
+    );
+    
+    // Execute transfer
+    const tx = await jpycContract.transfer(recipientAddress, amountWei);
     
     await tx.wait();
     console.log('✅ メタトランザクション完了');
     return tx.hash;
   };
 
-  // ペイマスター実装
+  // Paymaster実装
   const executePaymasterTransaction = async (): Promise<string> => {
     if (!signer) throw new Error('Signer not available');
     
-    console.log('💰 ペイマスター実行中...');
+    console.log('💳 Paymaster トランザクション実行中...');
     
-    // EIP-4337 Account Abstractionスタイル
-    const userOp = {
-      sender: currentAddress,
-      nonce: await signer.provider!.getTransactionCount(currentAddress!),
-      callData: recipientAddress + ethers.parseEther(amount).toString(16).padStart(64, '0'),
-      maxFeePerGas: 0, // ペイマスターが支払い
-      paymasterAndData: '0x1234567890123456789012345678901234567890'
-    };
-
-    console.log('📋 UserOperation作成:', userOp);
+    // JPYC トークン送金
+    const networkConfig = NETWORKS[selectedNetwork];
+    const amountWei = ethers.parseUnits(amount, 18);
     
-    // ペイマスターシミュレーション
-    const tx = await signer.sendTransaction({
-      to: recipientAddress,
-      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
-      gasLimit: 21000
-    });
+    const jpycContract = new ethers.Contract(
+      networkConfig.jpycAddress,
+      ['function transfer(address to, uint256 amount) returns (bool)'],
+      signer
+    );
+    
+    const tx = await jpycContract.transfer(recipientAddress, amountWei);
     
     await tx.wait();
-    console.log('✅ ペイマスター取引完了');
+    console.log('✅ Paymaster トランザクション完了');
     return tx.hash;
   };
 
-  // リレーヤー実装
+  // Relayer実装
   const executeRelayerTransaction = async (): Promise<string> => {
     if (!signer) throw new Error('Signer not available');
     
-    console.log('🚀 リレーヤー実行中...');
+    console.log('🔀 Relayer トランザクション実行中...');
     
-    const relayRequest = {
-      from: currentAddress,
-      to: recipientAddress,
-      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
-      gas: 100000,
-      nonce: await signer.provider!.getTransactionCount(currentAddress!)
-    };
-
-    const signature = await signer.signMessage(JSON.stringify(relayRequest));
-    console.log('🔗 リレーヤーリクエスト署名完了');
-
-    // リレーヤーシミュレーション
-    const tx = await signer.sendTransaction({
-      to: recipientAddress,
-      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
-      gasLimit: 21000
-    });
+    // JPYC トークン送金
+    const networkConfig = NETWORKS[selectedNetwork];
+    const amountWei = ethers.parseUnits(amount, 18);
+    
+    const jpycContract = new ethers.Contract(
+      networkConfig.jpycAddress,
+      ['function transfer(address to, uint256 amount) returns (bool)'],
+      signer
+    );
+    
+    const tx = await jpycContract.transfer(recipientAddress, amountWei);
     
     await tx.wait();
-    console.log('✅ リレーヤー取引完了');
+    console.log('✅ Relayer トランザクション完了');
     return tx.hash;
   };
 
@@ -234,19 +312,71 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
           border: '1px solid #e5e7eb' 
         }}>
           <h2 style={{ margin: '0 0 25px 0', color: '#1f2937', fontSize: '24px', fontWeight: 'bold', textAlign: 'center' }}>
-            ⛽ Sepolia ガスレス決済
+            ⛽ ガスレス JPYC 決済
           </h2>
 
-          {/* ネットワーク情報 */}
-          <div style={{ backgroundColor: '#eff6ff', border: '1px solid #93c5fd', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '16px' }}>🌐</span>
-              <span style={{ fontWeight: '600', color: '#1e40af' }}>Ethereum Sepolia Testnet</span>
+          {/* Ambire Wallet 専用通知 */}
+          {!isAmbireWallet && (
+            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', marginBottom: '8px' }}>
+                <span>⚠️</span>
+                <span style={{ fontWeight: '500' }}>Ambire Wallet が必要です</span>
+              </div>
+              <div style={{ fontSize: '14px', color: '#dc2626' }}>
+                ガスレス決済機能は Ambire Wallet でのみ利用可能です。<br/>
+                現在のウォレット: {walletName}<br/>
+                <a href="https://www.ambire.com/" target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                  Ambire Wallet をインストール
+                </a>
+              </div>
             </div>
-            <p style={{ margin: 0, fontSize: '14px', color: '#3730a3' }}>
-              Amoy Faucetの枯渇によりSepoliaに切り替え。無料でETHを取得してガスレステストが可能です。
-            </p>
+          )}
+
+          {/* ネットワーク選択 */}
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>
+              🌐 ネットワーク選択
+            </h3>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {Object.entries(NETWORKS).map(([key, network]) => (
+                <button
+                  key={key}
+                  onClick={() => setSelectedNetwork(key)}
+                  style={{
+                    padding: '10px 16px',
+                    border: `2px solid ${selectedNetwork === key ? '#3b82f6' : '#e5e7eb'}`,
+                    borderRadius: '8px',
+                    backgroundColor: selectedNetwork === key ? '#eff6ff' : '#ffffff',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: selectedNetwork === key ? '600' : '400',
+                    color: selectedNetwork === key ? '#1e40af' : '#6b7280',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {network.name}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* JPYC残高表示 */}
+          {jpycBalance && (
+            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '16px' }}>💰</span>
+                <span style={{ fontWeight: '600', color: '#15803d' }}>JPYC残高 ({NETWORKS[selectedNetwork].name})</span>
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#15803d' }}>
+                {parseFloat(jpycBalance).toFixed(2)} JPYC
+              </div>
+              {parseFloat(jpycBalance) < 10 && (
+                <div style={{ fontSize: '12px', color: '#ca8a04', marginTop: '8px' }}>
+                  ⚠️ 残高が少なくなっています。Faucetガイドから入手できます。
+                </div>
+              )}
+            </div>
+          )}
 
           {/* エラー・成功メッセージ */}
           {error && (
@@ -262,14 +392,47 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
           )}
           
           {success && (
-            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', marginBottom: '8px' }}>
-                <span>✅</span>
-                <span style={{ fontWeight: '500' }}>ガスレス送金完了</span>
+            <div style={{ 
+              backgroundColor: '#f0fdf4', 
+              border: '2px solid #10b981', 
+              borderRadius: '12px', 
+              padding: '25px', 
+              marginBottom: '20px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '10px' }}>✅</div>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#15803d', marginBottom: '15px' }}>
+                決済完了
               </div>
-              <div style={{ fontSize: '14px', color: '#15803d', whiteSpace: 'pre-line' }}>
+              <div style={{ 
+                fontSize: '14px', 
+                color: '#15803d', 
+                whiteSpace: 'pre-line',
+                lineHeight: '1.6',
+                textAlign: 'left',
+                marginBottom: '15px'
+              }}>
                 {success}
               </div>
+              <button 
+                onClick={() => {
+                  setSuccess('');
+                  setRecipientAddress('');
+                  setAmount('10');
+                }} 
+                style={{
+                  padding: '10px 24px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                新しい決済を開始
+              </button>
             </div>
           )}
 
@@ -366,17 +529,17 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
           {/* 実行ボタン */}
           <button
             onClick={executeGaslessTransfer}
-            disabled={loading || !recipientAddress || !amount}
+            disabled={loading || !recipientAddress || !amount || !isAmbireWallet}
             style={{
               width: '100%',
               padding: '16px',
               borderRadius: '8px',
               border: 'none',
-              backgroundColor: (loading || !recipientAddress || !amount) ? '#9ca3af' : '#10b981',
+              backgroundColor: (loading || !recipientAddress || !amount || !isAmbireWallet) ? '#9ca3af' : '#10b981',
               color: 'white',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: (loading || !recipientAddress || !amount) ? 'not-allowed' : 'pointer',
+              cursor: (loading || !recipientAddress || !amount || !isAmbireWallet) ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -388,33 +551,18 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
                 <span>⏳</span>
                 ガスレス送金実行中...
               </>
+            ) : !isAmbireWallet ? (
+              <>
+                <span>🔒</span>
+                Ambire Wallet でのみ利用可能
+              </>
             ) : (
               <>
                 <span>⛽</span>
-                Sepolia ガスレス送金を実行
+                ガスレス送金を実行
               </>
             )}
           </button>
-
-          {/* Sepolia Faucet情報 */}
-          <div style={{ 
-            fontSize: '12px', 
-            color: '#6b7280', 
-            backgroundColor: '#fffbeb', 
-            padding: '15px', 
-            borderRadius: '6px',
-            border: '1px solid #fed7aa',
-            marginTop: '20px'
-          }}>
-            <div style={{ fontWeight: '500', marginBottom: '8px', color: '#92400e' }}>
-              💧 Sepolia ETH Faucet:
-            </div>
-            <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: '1.5' }}>
-              <li><a href="https://sepoliafaucet.com/" target="_blank" style={{ color: '#3b82f6' }}>sepoliafaucet.com</a> - Alchemy提供</li>
-              <li><a href="https://www.infura.io/faucet/sepolia" target="_blank" style={{ color: '#3b82f6' }}>infura.io/faucet</a> - Infura提供</li>
-              <li><a href="https://faucets.chain.link/sepolia" target="_blank" style={{ color: '#3b82f6' }}>faucets.chain.link</a> - Chainlink提供</li>
-            </ul>
-          </div>
 
           {/* 注意事項 */}
           <div style={{ 
@@ -430,10 +578,10 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
               ⚠️ ガスレス決済について:
             </div>
             <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: '1.5' }}>
+              <li><strong>Ambire Wallet 専用機能</strong>: アカウント抽象化によるガスレス送金</li>
               <li>実際のガスレス実装にはリレーヤーやペイマスターの設定が必要です</li>
               <li>このデモは概念実証で、実際のガス料金は発生する場合があります</li>
-              <li>Sepolia テストネットでの検証用途にご利用ください</li>
-              <li>本番環境では適切なガスレスインフラの導入をお勧めします</li>
+              <li>テストネットでの検証用途にご利用ください</li>
             </ul>
           </div>
         </div>

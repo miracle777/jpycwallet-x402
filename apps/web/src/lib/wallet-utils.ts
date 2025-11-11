@@ -40,6 +40,26 @@ export const SEPOLIA_COMMUNITY_JPYC: TokenInfo = {
   image: 'https://storage.googleapis.com/jpyc-assets/jpyc-icon.png',
 };
 
+// Sepolia上の全JPYC（公式とコミュニティ）
+export const SEPOLIA_JPYC_TOKENS = [
+  {
+    name: 'JPYC (Official)',
+    address: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB',
+    symbol: 'JPYC',
+    decimals: 18,
+    faucetUrl: 'https://faucet.jpyc.jp/login',
+    description: '公式JPYCトークン - 公式サイトのFaucetを使用（推奨）',
+  },
+  {
+    name: 'JPYC (Community)',
+    address: '0xd3eF95d29A198868241FE374A999fc25F6152253',
+    symbol: 'JPYC',
+    decimals: 18,
+    faucetUrl: 'https://www.jpyc.cool/',
+    description: 'コミュニティJPYCトークン - コミュニティのFaucetを使用',
+  },
+];
+
 // 現在のネットワークのJPYCトークン情報を取得
 export function getCurrentJPYCToken(): TokenInfo | null {
   return JPYC_TOKENS[chainId] || null;
@@ -172,41 +192,41 @@ export const NETWORK_INFO: Record<number, {
   },
   11155111: {
     name: 'Ethereum Sepolia',
-    rpcUrl: 'https://rpc.sepolia.org',
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     blockExplorer: 'https://sepolia.etherscan.io',
     jpycToken: JPYC_TOKENS[11155111],
     faucetInfo: {
-      url: 'https://faucets.chain.link/sepolia',
-      description: 'Sepolia ETH（ガス代）Faucet - 複数のオプション利用可能',
+      url: 'https://faucet.jpyc.jp/login',
+      description: 'JPYC公式Faucet - ウォレット接続して取得（推奨）',
       alternatives: [
         {
           name: 'Chainlink Faucet',
           url: 'https://faucets.chain.link/sepolia',
-          description: '制限あり・簡単',
+          description: 'Sepolia ETH（ガス代）- 制限あり・簡単',
           type: 'standard',
         },
         {
           name: 'Alchemy Faucet',
           url: 'https://sepoliafaucet.com/',
-          description: '制限あり・簡単',
+          description: 'Sepolia ETH（ガス代）- 制限あり・簡単',
           type: 'standard',
         },
         {
           name: 'QuickNode Faucet',
           url: 'https://faucet.quicknode.com/ethereum/sepolia',
-          description: '制限あり・簡単',
+          description: 'Sepolia ETH（ガス代）- 制限あり・簡単',
           type: 'standard',
         },
         {
           name: 'Paradigm Faucet',
           url: 'https://faucet.paradigm.xyz/',
-          description: '制限あり・簡単',
+          description: 'Sepolia ETH（ガス代）- 制限あり・簡単',
           type: 'standard',
         },
         {
           name: 'pk910.de PoW Faucet',
           url: 'https://sepolia-faucet.pk910.de/',
-          description: 'マイニング型・制限なし（推奨）',
+          description: 'Sepolia ETH（ガス代）- マイニング型・制限なし（推奨）',
           type: 'mining',
         },
       ],

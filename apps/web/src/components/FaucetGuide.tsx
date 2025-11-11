@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NETWORK_INFO, JPYC_TOKENS } from '../lib/wallet-utils';
+import { NETWORK_INFO, JPYC_TOKENS, SEPOLIA_JPYC_TOKENS } from '../lib/wallet-utils';
 
 interface FaucetGuideProps {
   chainId?: number;
@@ -182,15 +182,67 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
               {isExpanded && (
                 <div style={styles.networkDetails}>
                   <p><strong>🔗 Chain ID:</strong> {networkChainId}</p>
-                  <p><strong>💰 JPYC Address:</strong> {tokenInfo?.address}</p>
+                  
+                  {/* Sepoliaの場合は2つのJPYCトークンを表示 */}
+                  {networkChainId === 11155111 ? (
+                    <div style={{ marginTop: '15px', marginBottom: '15px' }}>
+                      <strong>💰 利用可能なJPYCトークン:</strong>
+                      {SEPOLIA_JPYC_TOKENS.map((token, idx) => (
+                        <div 
+                          key={idx}
+                          style={{ 
+                            backgroundColor: idx === 0 ? '#dbeafe' : '#f3f4f6',
+                            border: `2px solid ${idx === 0 ? '#3b82f6' : '#d1d5db'}`,
+                            padding: '12px',
+                            borderRadius: '8px',
+                            marginTop: '10px',
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, marginBottom: '6px' }}>
+                            {token.name} {idx === 0 && '⭐️'}
+                          </div>
+                          <div style={{ fontSize: '13px', fontFamily: 'monospace', color: '#4b5563', marginBottom: '6px' }}>
+                            📍 {token.address}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                            {token.description}
+                          </div>
+                          <a
+                            href={token.faucetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              display: 'inline-block',
+                              padding: '6px 12px',
+                              backgroundColor: idx === 0 ? '#3b82f6' : '#6b7280',
+                              color: 'white',
+                              borderRadius: '6px',
+                              textDecoration: 'none',
+                              fontSize: '12px',
+                              fontWeight: 500,
+                            }}
+                          >
+                            🚰 {idx === 0 ? '公式Faucet' : 'コミュニティFaucet'}を開く →
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p><strong>💰 JPYC Address:</strong> {tokenInfo?.address}</p>
+                  )}
+                  
                   <p><strong>🌐 Block Explorer:</strong> <a href={networkInfo.blockExplorer} target="_blank" rel="noopener noreferrer">{networkInfo.blockExplorer}</a></p>
 
-                  <div style={{ marginTop: '15px' }}>
-                    <strong>📋 Faucetコントラクトからの取得手順:</strong>
-                    <div style={{ backgroundColor: '#fef3c7', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '13px' }}>
-                      <strong>🏗️ Faucetコントラクト:</strong> {networkInfo.faucetInfo!.contractAddress}
-                    </div>
-                    <ul style={styles.stepList}>
+                  {/* Sepolia以外のネットワークの場合、Faucetコントラクト手順を表示 */}
+                  {networkChainId !== 11155111 && (
+                    <>
+                      <div style={{ marginTop: '15px' }}>
+                        <strong>📋 Faucetコントラクトからの取得手順:</strong>
+                        <div style={{ backgroundColor: '#fef3c7', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '13px' }}>
+                          <strong>🏗️ Faucetコントラクト:</strong> {networkInfo.faucetInfo!.contractAddress}
+                        </div>
+                        <ul style={styles.stepList}>
                       <li style={styles.stepItem}>
                         <div style={styles.stepNumber}>1</div>
                         <div>
@@ -255,6 +307,51 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
                     • テストネット用のため実際の価値はありません<br />
                     • {networkInfo.faucetInfo!.description}
                   </div>
+                </>
+              )}
+
+                  {/* Sepoliaの場合、ETH Faucet情報も表示 */}
+                  {networkChainId === 11155111 && networkInfo.faucetInfo?.alternatives && (
+                    <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#eff6ff', border: '2px solid #3b82f6', borderRadius: '8px' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#1e40af', fontSize: '16px' }}>
+                        ⛽ Sepolia ETH（ガス代）Faucet
+                      </h4>
+                      <p style={{ fontSize: '13px', color: '#1e40af', marginBottom: '10px' }}>
+                        JPYCを取得する前に、ガス代として少量のSepolia ETHが必要です：
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                        {networkInfo.faucetInfo.alternatives.map((alt, idx) => (
+                          <a
+                            key={idx}
+                            href={alt.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'block',
+                              padding: '10px',
+                              backgroundColor: alt.type === 'mining' ? '#dcfce7' : '#ffffff',
+                              border: `1px solid ${alt.type === 'mining' ? '#10b981' : '#d1d5db'}`,
+                              borderRadius: '6px',
+                              textDecoration: 'none',
+                              color: '#1f2937',
+                              fontSize: '13px',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+                              {alt.name} {alt.type === 'mining' && '⭐'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                              {alt.description}
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: '10px', fontSize: '12px', color: '#1e40af' }}>
+                        💡 <strong>推奨:</strong> pk910.de PoW Faucet（制限なし・マイニング型）
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

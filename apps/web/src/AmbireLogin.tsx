@@ -5,7 +5,7 @@ import { readBalance } from "./lib/jpyc";
 import { addTokenToWallet, NETWORK_INFO } from "./lib/wallet-utils";
 
 interface AmbireLoginProps {
-  onConnect?: (address: string, signer: ethers.Signer) => void;
+  onConnect?: (address: string, signer: ethers.Signer, walletName?: string) => void;
   onDisconnect?: () => void;
 }
 
@@ -66,6 +66,8 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
 
       console.log('Wallet connected successfully via modal:', walletState[0].label);
       setConnectionStep(`✅ ${walletState[0].label} に接続しました！`);
+      
+      const walletName = walletState[0].label || 'Unknown';
 
       // EIP-1193 -> ethers v6 Provider
       const providerObj = onboard.state.get().wallets[0].provider as any;
@@ -113,7 +115,7 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
       setConnectionStep("接続完了！");
       
       // App.tsxのコールバックを呼び出し
-      onConnect?.(addr, signer);
+      onConnect?.(addr, signer, walletName);
       setErrMsg(null); // 成功時はエラーメッセージをクリア
       
     } catch (e: any) {
@@ -278,7 +280,8 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
       setConnectionStep("接続完了！");
       
       // App.tsxのコールバックを呼び出し
-      onConnect?.(addr, signer);
+      const walletName = walletState[0]?.label || 'Unknown';
+      onConnect?.(addr, signer, walletName);
       setErrMsg(null); // 成功時はエラーメッセージをクリア
       
     } catch (e: any) {
