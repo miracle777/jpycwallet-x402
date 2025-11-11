@@ -121,7 +121,10 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   // 金額変更時に base units に変換
   const handleAmountChange = (value: string) => {
     // 整数のみを受け付ける
-    const intValue = Math.floor(parseFloat(value) || 0);
+    const numValue = parseFloat(value) || 0;
+    const intValue = Math.floor(Math.abs(numValue)); // 負の値対策
+    
+    // amount の状態を更新
     setAmount(intValue.toString());
     
     // 1 JPYC = 1,000,000 base units
@@ -129,6 +132,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       const baseUnits = (intValue * 1000000).toString();
       setAmountInBaseUnits(baseUnits);
       console.log(`金額変更: ${intValue}円 → ${baseUnits} base units`);
+    } else {
+      setAmountInBaseUnits('0');
     }
   };
 
@@ -137,7 +142,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     return {
       scheme: "exact",
       network: selectedNetwork,
-      maxAmountRequired: amountInBaseUnits, // base unitsを使用
+      maxAmountRequired: amount, // JPYC数量をそのまま使用（base unitsではなく）
       resource: `https://api.example.com/payment/${Date.now()}`,
       description,
       mimeType: "application/json",

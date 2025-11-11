@@ -235,27 +235,11 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
           {chain.id !== "0x89" && (
             <div className="alert alert-info">
               <div className="font-semibold mb-2">
-                🧪 テストネットワーク情報
+                🧪 テストネットワーク
               </div>
               <div className="text-sm">
                 このネットワークではテスト用JPYCを使用します。
               </div>
-              {NETWORK_INFO[parseInt(chain.id, 16)]?.faucetInfo && (
-                <div className="mt-2">
-                  <div className="font-medium text-sm">💧 テストJPYC取得:</div>
-                  <a 
-                    href={NETWORK_INFO[parseInt(chain.id, 16)].faucetInfo!.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline text-sm"
-                  >
-                    Faucetで取得 →
-                  </a>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {NETWORK_INFO[parseInt(chain.id, 16)].faucetInfo!.description}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

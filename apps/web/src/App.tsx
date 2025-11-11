@@ -29,10 +29,12 @@ function App() {
   const [merchantInfo, setMerchantInfo] = useState<any>(null);
 
   const handleWalletConnect = (address: string, signer: ethers.Signer) => {
+    console.log('📱 Wallet connected:', address);
     setWalletData({ address, signer });
   };
 
   const handleWalletDisconnect = () => {
+    console.log('🔌 Wallet disconnected');
     setWalletData({ address: null, signer: null });
   };
 
