@@ -1,18 +1,15 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import AmbireLogin from "./AmbireLogin";
-import SubscriptionContract from "./components/SubscriptionContract";
-import SubscriptionDashboard from "./components/SubscriptionDashboard";
-import MerchantProductManager from "./components/MerchantProductManager";
-import CustomShoppingCart from "./components/CustomShoppingCart";
-import SepoliaGasless from "./components/SepoliaGasless";
-import PaymentRequestSimple from "./components/PaymentRequestSimple";
 import X402SimplePayment from "./components/X402SimplePayment";
 import X402Subscription from "./components/X402Subscription";
+import X402SubscriptionShop from "./components/X402SubscriptionShop";
+import SepoliaGasless from "./components/SepoliaGasless";
 import NetworkSelector from "./components/NetworkSelector";
 import FaucetGuide from "./components/FaucetGuide";
 import QRCodeDisplay from "./components/QRCodeDisplay";
 import MerchantPaymentRequest from "./components/MerchantPaymentRequest";
+import PaymentRequestSimple from "./components/PaymentRequestSimple";
 import type { ChainKey } from "./lib/onboard";
 
 function App() {
@@ -22,7 +19,7 @@ function App() {
   }>({ address: null, signer: null });
 
   const [selectedNetwork, setSelectedNetwork] = useState<ChainKey>('sepolia');
-  const [activeTab, setActiveTab] = useState<'payment' | 'x402-simple' | 'subscription-contract' | 'x402-subscription' | 'subscription-dashboard' | 'merchant-products' | 'shopping-cart' | 'sepolia-gasless'>('payment');
+  const [activeTab, setActiveTab] = useState<'payment' | 'x402-simple' | 'x402-subscription' | 'x402-subscription-shop' | 'sepolia-gasless'>('x402-simple');
   
   // ページ管理: 'main' | 'merchant' | 'pay'
   const [currentPage, setCurrentPage] = useState<'main' | 'merchant' | 'pay'>('main');
@@ -275,12 +272,9 @@ function App() {
                     {[
                       { id: 'payment', label: 'QR決済', icon: '📱' },
                       { id: 'x402-simple', label: 'x402決済テスト', icon: '💳' },
-                      { id: 'subscription-contract', label: 'サブスク', icon: '📝' },
-                      { id: 'x402-subscription', label: 'x402サブスク', icon: '🔄' },
-                      { id: 'subscription-dashboard', label: 'ダッシュボード', icon: '📊' },
-                      { id: 'merchant-products', label: '商品管理', icon: '🛍️' },
-                      { id: 'shopping-cart', label: 'ショッピングカート', icon: '🛒' },
-                      { id: 'sepolia-gasless', label: 'Sepoliaガスレス', icon: '⛽' },
+                      { id: 'x402-subscription', label: 'x402サブスク管理', icon: '🔄' },
+                      { id: 'x402-subscription-shop', label: 'サブスク申し込み', icon: '🛍️' },
+                      { id: 'sepolia-gasless', label: 'ガスレス決済', icon: '⛽' },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -311,16 +305,6 @@ function App() {
                     />
                   )}
 
-                  {activeTab === 'subscription-contract' && (
-                    <SubscriptionContract
-                      currentAddress={walletData.address || undefined}
-                      onSubscribe={(plan, txHash) => {
-                        console.log('Subscribed to plan:', plan);
-                        handlePaymentComplete(txHash);
-                      }}
-                    />
-                  )}
-
                   {activeTab === 'x402-subscription' && (
                     <X402Subscription
                       currentAddress={walletData.address || undefined}
@@ -329,21 +313,8 @@ function App() {
                     />
                   )}
 
-                  {activeTab === 'subscription-dashboard' && (
-                    <SubscriptionDashboard
-                      currentAddress={walletData.address || undefined}
-                    />
-                  )}
-
-                  {activeTab === 'merchant-products' && (
-                    <MerchantProductManager
-                      currentAddress={walletData.address || undefined}
-                      signer={walletData.signer || undefined}
-                    />
-                  )}
-
-                  {activeTab === 'shopping-cart' && (
-                    <CustomShoppingCart
+                  {activeTab === 'x402-subscription-shop' && (
+                    <X402SubscriptionShop
                       currentAddress={walletData.address || undefined}
                       signer={walletData.signer || undefined}
                       onPaymentComplete={handlePaymentComplete}
@@ -354,7 +325,6 @@ function App() {
                     <SepoliaGasless
                       currentAddress={walletData.address || undefined}
                       signer={walletData.signer || undefined}
-                      onPaymentComplete={handlePaymentComplete}
                     />
                   )}
                 </div>
@@ -373,7 +343,17 @@ function App() {
                       <p>👆 左側でウォレットを接続してください</p>
                       <p>🌐 お好みのネットワークを選択</p>
                       <p>💰 テスト用JPYCを取得</p>
-                      <p>🚀 各種決済機能をお試しください</p>
+                      /* 接続済み時の情報表示 */
+                  <div className="bg-white rounded-lg shadow-md p-6 text-center">
+                    <h2 className="text-xl font-semibold mb-4">🎯 テスト項目</h2>
+                    <div className="space-y-4">
+                      <p>� <strong>x402決済テスト</strong><br/>単発決済の動作確認</p>
+                      <p>🔄 <strong>x402サブスク管理</strong><br/>サブスクリプション設定・管理</p>
+                      <p>🛍️ <strong>サブスク申し込み</strong><br/>ユーザー向け申し込みページ</p>
+                    </div>
+                  </div>
+                ) : (
+                  /* 未接続時のガイド */
                     </div>
                   </div>
                 ) : qrCodeData ? (

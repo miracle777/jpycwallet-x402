@@ -74,6 +74,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   const isLoadedFromUrlRef = useRef(false); // 同期的な状態管理用
   const [generatedPaymentUrl, setGeneratedPaymentUrl] = useState<string>('');
   const [urlCopied, setUrlCopied] = useState(false);
+  const [isPaymentCompleted, setIsPaymentCompleted] = useState(false); // 決済完了状態
+  const [completedTransactionHash, setCompletedTransactionHash] = useState<string>(''); // 完了したトランザクションハッシュ
 
   // ネットワーク設定（デフォルト）
   const defaultNetworkConfig = {
@@ -139,6 +141,22 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       console.log('🔗 URLパラメータを処理開始:', initialRequest);
       
       try {
+        // URLクエリパラメータから決済完了状態をチェック
+        const urlParams = new URLSearchParams(window.location.search);
+        const completedTxHash = urlParams.get('completed');
+        
+        if (completedTxHash) {
+          console.log('✅ 決済完了済みURLが検出されました:', completedTxHash);
+          setIsPaymentCompleted(true);
+          setCompletedTransactionHash(completedTxHash);
+          setSuccess(`この決済は既に完了しています！
+          
+✅ トランザクションハッシュ: ${completedTxHash}
+🚫 このURLは再利用できません
+💡 新しい決済を行うには、新しいURLを生成してください`);
+          return;
+        }
+        
         const decoded = JSON.parse(atob(initialRequest));
         
         console.log('🔗 URLからPaymentRequirementsを読み込みました:', decoded);
@@ -311,6 +329,76 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   };
 
   // x402決済フローを実行
+  // ネットワーク切り替えを試行
+  const switchToNetwork = async (targetChainId: bigint, networkName: string): Promise<boolean> => {
+    try {
+      console.log(`🔄 ネットワーク切り替え試行: ${networkName} (${targetChainId})`);
+      
+      if (signer?.provider && 'send' in signer.provider) {
+        // EIP-3326: wallet_switchEthereumChain
+        const chainIdHex = '0x' + targetChainId.toString(16);
+        await (signer.provider as any).send('wallet_switchEthereumChain', [{
+          chainId: chainIdHex
+        }]);
+        
+        console.log(`✅ ネットワーク切り替え成功: ${networkName}`);
+        return true;
+      }
+    } catch (error: any) {
+      console.warn(`⚠️ ネットワーク切り替え失敗:`, error);
+      
+      // エラーコード 4902: ネットワークが追加されていない場合
+      if (error.code === 4902) {
+        console.log('📡 ネットワークを追加してから切り替えを試行');
+        return await addAndSwitchNetwork(targetChainId, networkName);
+      }
+    }
+    return false;
+  };
+
+  // ネットワーク追加と切り替え
+  const addAndSwitchNetwork = async (targetChainId: bigint, networkName: string): Promise<boolean> => {
+    try {
+      const config = getCurrentNetworkConfig();
+      if (!config) return false;
+      
+      const chainIdHex = '0x' + targetChainId.toString(16);
+      
+      if (signer?.provider && 'send' in signer.provider) {
+        // EIP-3085: wallet_addEthereumChain
+        await (signer.provider as any).send('wallet_addEthereumChain', [{
+          chainId: chainIdHex,
+          chainName: config.name,
+          rpcUrls: [config.rpcUrl],
+          nativeCurrency: {
+            name: config.currency,
+            symbol: config.currency,
+            decimals: 18
+          }
+        }]);
+        
+        console.log(`✅ ネットワーク追加・切り替え成功: ${networkName}`);
+        return true;
+      }
+    } catch (error) {
+      console.error(`❌ ネットワーク追加失敗:`, error);
+    }
+    return false;
+  };
+
+  // Chain IDからネットワーク名を取得
+  const getNetworkNameFromChainId = (chainId: number): string => {
+    const networks: Record<number, string> = {
+      1: 'Ethereum Mainnet',
+      11155111: 'Ethereum Sepolia',
+      137: 'Polygon Mainnet',  
+      80002: 'Polygon Amoy',
+      43114: 'Avalanche Mainnet',
+      43113: 'Avalanche Fuji'
+    };
+    return networks[chainId] || `Unknown Network (${chainId})`;
+  };
+
   const executeX402Payment = async () => {
     if (!signer || !currentAddress) {
       setError('ウォレット接続が必要です');
@@ -336,6 +424,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       console.log('📊 Debug info:');
       console.log('  selectedNetwork:', selectedNetwork);
       console.log('  currentConfig:', currentConfig);
+      console.log('  currentConfig.asset (JPYC Address):', currentConfig.asset);
       console.log('  paymentRequirements:', paymentRequirements);
 
       // Step 0: ネットワークチェック
@@ -364,9 +453,24 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       console.log('Expected chainId:', currentConfig.chainId, 'Current chainId:', currentChainId);
       
       if (currentChainId !== currentConfig.chainId) {
-        setError(`${currentConfig.name}ネットワークに接続してください。現在のネットワークチェーンID: ${currentChainId}`);
-        setLoading(false);
-        return;
+        // ネットワーク不一致時の対応
+        const networkName = currentConfig.name;
+        const currentNetworkName = getNetworkNameFromChainId(Number(currentChainId));
+        
+        console.log(`⚠️ ネットワーク不一致: 期待値=${networkName} (${currentConfig.chainId}), 現在=${currentNetworkName} (${currentChainId})`);
+        
+        // 自動切り替えを試行
+        const switchResult = await switchToNetwork(currentConfig.chainId, networkName);
+        if (!switchResult) {
+          setError(`ネットワークを${networkName} (Chain ID: ${currentConfig.chainId})に切り替えてください。
+          
+🔄 現在のネットワーク: ${currentNetworkName} (Chain ID: ${currentChainId})
+🎯 必要なネットワーク: ${networkName} (Chain ID: ${currentConfig.chainId})
+
+💡 手動でウォレットのネットワークを切り替えてから再度お試しください。`);
+          setLoading(false);
+          return;
+        }
       }
 
       // Step 1: 402レスポンスをシミュレート
@@ -405,7 +509,39 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         receipt = await tx.wait();
       } else {
         // JPYC transfer（Polygon Amoy など）
-        const jpycContract = getErc20Contract(signer);
+        const jpycContractAddress = currentConfig.asset; // currentConfigのassetにJPYCアドレスが入っている
+        console.log(`📍 使用するJPYCコントラクトアドレス: ${jpycContractAddress}`);
+        
+        // Sepoliaの場合、両方のアドレスで残高確認
+        if (currentConfig.chainId === 11155111n) {
+          const addresses = [
+            '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB', // 公式
+            '0xd3eF95d29A198868241FE374A999fc25F6152253'  // コミュニティ版
+          ];
+          
+          console.log('🔍 Sepolia JPYCアドレスの残高確認:');
+          for (const addr of addresses) {
+            try {
+              const tempContract = new ethers.Contract(addr, ["function balanceOf(address) view returns (uint256)"], signer);
+              const balance = await tempContract.balanceOf(currentAddress);
+              const balanceString = (parseFloat(balance.toString()) / 1000000).toFixed(2);
+              console.log(`  📍 ${addr}: ${balanceString} JPYC (${balance.toString()} base units)`);
+            } catch (e) {
+              console.log(`  ❌ ${addr}: エラー`, e);
+            }
+          }
+        }
+        
+        const jpycContract = new ethers.Contract(
+          jpycContractAddress,
+          [
+            "function decimals() view returns (uint8)",
+            "function balanceOf(address) view returns (uint256)",
+            "function transfer(address,uint256) returns (bool)"
+          ],
+          signer
+        );
+        
         const decimals = await jpycContract.decimals();
         console.log(`📊 Decimals: ${decimals}, Amount in base units: ${amountInBaseUnits}`);
         
@@ -463,13 +599,38 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         `⛓️ Transaction:\n` +
         `• Hash: ${receipt?.hash}\n` +
         `• Block: ${receipt?.blockNumber}\n\n` +
-        `💡 ヒント: 次の決済では、ページを再読み込み（F5）してから実行してください。`
+        `💡 この決済URLは使用済みとなりました。新しい決済には新しいURLを生成してください。`
       );
 
-      onPaymentComplete?.(receipt?.hash || '');
+      // 決済完了状態を設定
+      setIsPaymentCompleted(true);
+      const txHash = receipt?.hash || '';
+      setCompletedTransactionHash(txHash);
+      
+      // URLに決済完了を示すパラメータを追加
+      if (txHash) {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('completed', txHash);
+        window.history.replaceState({}, '', currentUrl.toString());
+        console.log('🔗 URL更新完了: 決済完了状態を記録');
+      }
+
+      try {
+        onPaymentComplete?.(txHash);
+      } catch (callbackError: any) {
+        console.warn('⚠️ onPaymentComplete callback error:', callbackError);
+        // コールバックエラーは無視（決済は成功している）
+      }
 
     } catch (e: any) {
       let errorMessage = e.message || 'Unknown error';
+      
+      console.error('❌ x402決済エラー詳細:', {
+        error: e,
+        message: e.message,
+        code: e.code,
+        stack: e.stack
+      });
       
       if (errorMessage.includes('user rejected')) {
         setError('ユーザーによって取引がキャンセルされました');
@@ -478,7 +639,6 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       } else {
         setError(`x402決済に失敗しました: ${errorMessage}`);
       }
-      console.error('❌ x402決済エラー:', e);
     } finally {
       setLoading(false);
     }
@@ -569,6 +729,70 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         <h2 style={{ margin: '0 0 25px 0', color: '#1f2937', fontSize: '24px', fontWeight: 'bold', textAlign: 'center' }}>
           💳 x402 Simple Payment
         </h2>
+
+        {/* 決済完了時の専用表示 */}
+        {isPaymentCompleted && (
+          <div style={{ 
+            backgroundColor: '#f0fdf4', 
+            border: '2px solid #10b981', 
+            borderRadius: '12px', 
+            padding: '25px', 
+            marginBottom: '25px',
+            textAlign: 'center' 
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '15px' }}>✅</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#059669', marginBottom: '15px' }}>
+              決済完了済み
+            </div>
+            <div style={{ fontSize: '14px', color: '#065f46', lineHeight: '1.6', marginBottom: '20px' }}>
+              この決済URLは既に使用済みです。<br/>
+              <strong>⚠️ 再利用することはできません</strong>
+            </div>
+            
+            {completedTransactionHash && (
+              <div style={{ 
+                backgroundColor: '#ecfdf5', 
+                border: '1px solid #a7f3d0', 
+                borderRadius: '8px', 
+                padding: '15px', 
+                marginBottom: '20px' 
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: '500', color: '#065f46', marginBottom: '8px' }}>
+                  🔗 トランザクション情報:
+                </div>
+                <div style={{ 
+                  fontSize: '12px', 
+                  fontFamily: 'monospace', 
+                  color: '#047857',
+                  backgroundColor: 'white',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  border: '1px solid #d1fae5',
+                  wordBreak: 'break-all'
+                }}>
+                  {completedTransactionHash}
+                </div>
+              </div>
+            )}
+            
+            <div style={{ 
+              fontSize: '13px', 
+              color: '#065f46', 
+              backgroundColor: '#dcfce7', 
+              padding: '12px', 
+              borderRadius: '8px',
+              border: '1px solid #bbf7d0' 
+            }}>
+              <strong>💡 マーチャント（店舗）向けメモ:</strong><br/>
+              新しい決済を受け付けるには、新しい決済URLを生成してください。<br/>
+              各決済URLは1回限りの使用となります。
+            </div>
+          </div>
+        )}
+
+        {/* 通常のUI（決済完了時は非表示） */}
+        {!isPaymentCompleted && (
+          <>
 
         {/* 決済リクエスト情報の表示 */}
         {isLoadedFromUrl && paymentRequirements && (
@@ -827,6 +1051,29 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
           </div>
         )}
 
+        {/* ネットワーク残高情報 */}
+        {signer && (
+          <div style={{ 
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            padding: '15px',
+            marginBottom: '20px'
+          }}>
+            <div style={{ 
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '10px'
+            }}>
+              💰 各ネットワークの残高確認
+            </div>
+            <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
+              支払い前に残高のあるネットワークを選択してください
+            </div>
+          </div>
+        )}
+
         {/* 決済フォーム */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '25px' }}>
           <div>
@@ -836,15 +1083,14 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
             <select
               value={selectedNetwork}
               onChange={(e) => setSelectedNetwork(e.target.value as 'polygon-amoy' | 'sepolia' | 'sepolia-official' | 'avalanche-fuji')}
-              disabled={isLoadedFromUrl}
               style={{
                 width: '100%',
                 padding: '10px',
                 border: '1px solid #d1d5db',
                 borderRadius: '6px',
                 fontSize: '14px',
-                backgroundColor: isLoadedFromUrl ? '#f9fafb' : 'white',
-                cursor: isLoadedFromUrl ? 'not-allowed' : 'pointer'
+                backgroundColor: 'white',
+                cursor: 'pointer'
               }}
             >
               <option value="polygon-amoy">Polygon Amoy (JPYC)</option>
@@ -852,6 +1098,19 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
               <option value="sepolia-official">Ethereum Sepolia - Official (JPYC)</option>
               <option value="avalanche-fuji">Avalanche Fuji (JPYC)</option>
             </select>
+            {isLoadedFromUrl && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#6b7280', 
+                marginTop: '5px',
+                padding: '8px',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '4px'
+              }}>
+                💡 URLで指定されたネットワーク: <strong>{getCurrentNetworkConfig()?.name}</strong><br/>
+                残高のあるネットワークに変更して決済できます
+              </div>
+            )}
           </div>
 
           <div>
@@ -1014,17 +1273,17 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
           {isLoadedFromUrl ? (
             <button
               onClick={executeX402Payment}
-              disabled={loading || !currentAddress}
+              disabled={loading || !currentAddress || isPaymentCompleted}
               style={{
                 width: '100%',
                 padding: '16px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: (loading || !currentAddress) ? '#9ca3af' : '#10b981',
+                backgroundColor: (loading || !currentAddress || isPaymentCompleted) ? '#9ca3af' : '#10b981',
                 color: 'white',
                 fontSize: '16px',
                 fontWeight: '600',
-                cursor: (loading || !currentAddress) ? 'not-allowed' : 'pointer',
+                cursor: (loading || !currentAddress || isPaymentCompleted) ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1035,6 +1294,11 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                 <>
                   <span>⏳</span>
                   決済処理中...
+                </>
+              ) : isPaymentCompleted ? (
+                <>
+                  <span>✅</span>
+                  決済完了済み
                 </>
               ) : !currentAddress ? (
                 <>
@@ -1111,6 +1375,9 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
             <li>GitHub PR #619 の仕様に準拠</li>
           </ul>
         </div>
+
+        </>
+        )}
       </div>
     </div>
   );
