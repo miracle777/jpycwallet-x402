@@ -246,17 +246,19 @@ function App() {
 
               {/* 右カラム: QRコード表示エリア（PCでは右、モバイルでは下） */}
               <div className="flex flex-col">
-                <div className="sticky top-8">
+                <div className="sticky top-4"> {/* top-8 から top-4 に変更して上部スペースを減らす */}
                   {qrCodeData ? (
-                    <QRCodeDisplay 
-                      qrData={qrCodeData}
-                      amount={paymentAmount}
-                      merchantInfo={merchantInfo}
-                      onRefresh={handleQRRefresh}
-                    />
+                    <div className="qr-code-container"> {/* 専用コンテナクラス追加 */}
+                      <QRCodeDisplay 
+                        qrData={qrCodeData}
+                        amount={paymentAmount}
+                        merchantInfo={merchantInfo}
+                        onRefresh={handleQRRefresh}
+                      />
+                    </div>
                   ) : (
                     /* QRコード未生成時のプレースホルダー */
-                    <div className="card text-center">
+                    <div className="card text-center qr-code-container">{/* プレースホルダーにもQRコンテナクラス追加 */}
                       <h2 className="text-xl font-semibold mb-4">QRコード表示エリア</h2>
                       <div className="qr-code-container">
                         <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">

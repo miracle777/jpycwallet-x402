@@ -59,7 +59,7 @@ body {
   }
   
   .desktop-2-col {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 2fr 3fr; /* 左40% 右60% でQRコードエリアを広く */
   }
   
   .desktop-3-col {
@@ -360,7 +360,7 @@ body {
 .qr-code-container {
   text-align: center;
   padding: 20px;
-  min-height: 400px;
+  min-height: 500px; /* より高く設定 */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -369,8 +369,8 @@ body {
 .qr-code-container img {
   max-width: 100%;
   height: auto;
-  max-height: 350px;
-  min-height: 280px;
+  max-height: 450px; /* QRコードをより大きく */
+  min-height: 350px;
 }
 
 /* モバイルでのQRコード */

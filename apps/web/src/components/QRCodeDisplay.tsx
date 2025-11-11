@@ -34,7 +34,7 @@ export default function QRCodeDisplay({
         setParsedData(parsed);
 
         const imageUrl = await QRCode.toDataURL(qrData, {
-          width: 288, // 大きなサイズ（72 * 4）
+          width: 384, // さらに大きなサイズ（96 * 4）
           margin: 2,
           color: {
             dark: '#000000',

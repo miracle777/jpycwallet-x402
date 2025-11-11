@@ -56,14 +56,35 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   signer,
   onPaymentComplete,
 }) => {
-  const [amount, setAmount] = useState('1000000'); // 1 JPYC in base units (1,000,000 = 1 JPYC)
+  const [amount, setAmount] = useState('1000000'); // デフォルト: 1 JPYC or 0.001 ETH in base units
   const [recipient, setRecipient] = useState('');
   const [description, setDescription] = useState('x402 Simple Payment Test');
+  const [selectedNetwork, setSelectedNetwork] = useState<'polygon' | 'sepolia'>('polygon');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [paymentRequirements, setPaymentRequirements] = useState<PaymentRequirements | null>(null);
   const [paymentPayload, setPaymentPayload] = useState<PaymentPayload | null>(null);
+
+  // ネットワーク設定
+  const networkConfig = {
+    polygon: {
+      chainId: 137n,
+      name: 'Polygon',
+      currency: 'JPYC',
+      asset: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB', // JPYC
+      decimals: 6
+    },
+    sepolia: {
+      chainId: 11155111n,
+      name: 'Sepolia',
+      currency: 'ETH',
+      asset: 'ETH', // Native ETH
+      decimals: 18
+    }
+  };
+
+  const currentConfig = networkConfig[selectedNetwork];
 
   // ウォレット接続時に受取アドレスを自動設定
   React.useEffect(() => {
@@ -72,20 +93,29 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     }
   }, [currentAddress, recipient]);
 
+  // ネットワーク変更時に適切なデフォルト金額を設定
+  React.useEffect(() => {
+    if (selectedNetwork === 'sepolia') {
+      setAmount('1000000000000000'); // 0.001 ETH in wei
+    } else {
+      setAmount('1000000'); // 1 JPYC in base units
+    }
+  }, [selectedNetwork]);
+
   // x402 PaymentRequirements を作成
   const createPaymentRequirements = (): PaymentRequirements => {
     return {
       scheme: "exact",
-      network: "polygon", // Polygonメインネット
+      network: selectedNetwork,
       maxAmountRequired: amount,
       resource: `https://api.example.com/payment/${Date.now()}`,
       description,
       mimeType: "application/json",
       payTo: recipient,
       maxTimeoutSeconds: 300, // 5分
-      asset: "0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB", // Polygon mainnet JPYC
+      asset: currentConfig.asset,
       extra: {
-        name: "JPYC",
+        name: currentConfig.currency,
         version: "2"
       }
     };
@@ -142,7 +172,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     return {
       x402Version: 1,
       scheme: "exact",
-      network: "polygon",
+      network: selectedNetwork,
       payload: {
         signature,
         authorization
@@ -188,8 +218,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       const currentNetwork = await signer.provider?.getNetwork();
       console.log('Current network:', currentNetwork);
       
-      if (currentNetwork?.chainId !== 137n) { // 137 is Polygon mainnet
-        setError('Polygonネットワークに接続してください。現在のネットワークでは決済できません。');
+      if (currentNetwork?.chainId !== currentConfig.chainId) {
+        setError(`${currentConfig.name}ネットワークに接続してください。現在のネットワークでは決済できません。`);
         setLoading(false);
         return;
       }
@@ -216,23 +246,37 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       });
 
       // Step 3: 決済実行（実際のブロックチェーン取引）
-      console.log('⛓️ Step 3: JPYC transfer実行');
+      console.log(`⛓️ Step 3: ${currentConfig.currency} transfer実行`);
       
-      // JPYC ERC-20 contract transfer
-      const jpycContract = getErc20Contract(signer);
-      const decimals = await jpycContract.decimals();
-      const transferAmount = ethers.parseUnits((parseFloat(amount) / 1000000).toString(), decimals);
-      
-      console.log(`Transferring ${(parseFloat(amount) / 1000000)} JPYC to ${recipient}`);
-      const tx = await jpycContract.transfer(recipient, transferAmount);
-      
-      const receipt = await tx.wait();
-      console.log('🎉 JPYC transfer完了:', receipt?.hash);
+      let receipt;
+      if (selectedNetwork === 'sepolia') {
+        // Sepolia ETH transfer
+        const transferAmount = ethers.parseUnits((parseFloat(amount) / Math.pow(10, currentConfig.decimals)).toString(), currentConfig.decimals);
+        console.log(`Transferring ${(parseFloat(amount) / Math.pow(10, currentConfig.decimals))} ETH to ${recipient}`);
+        const tx = await signer.sendTransaction({
+          to: recipient,
+          value: transferAmount
+        });
+        receipt = await tx.wait();
+      } else {
+        // Polygon JPYC transfer
+        const jpycContract = getErc20Contract(signer);
+        const decimals = await jpycContract.decimals();
+        const transferAmount = ethers.parseUnits((parseFloat(amount) / 1000000).toString(), decimals);
+        console.log(`Transferring ${(parseFloat(amount) / 1000000)} JPYC to ${recipient}`);
+        const tx = await jpycContract.transfer(recipient, transferAmount);
+        receipt = await tx.wait();
+      }
+      console.log(`🎉 ${currentConfig.currency} transfer完了:`, receipt?.hash);
+
+      const displayAmount = selectedNetwork === 'sepolia' 
+        ? (parseFloat(amount) / Math.pow(10, currentConfig.decimals)).toFixed(6)
+        : (parseFloat(amount) / 1000000).toFixed(0);
 
       setSuccess(
         `x402決済が完了しました！\n\n` +
         `💳 Payment Details:\n` +
-        `• Amount: ${(parseFloat(amount) / 1000000).toFixed(0)} JPYC\n` +
+        `• Amount: ${displayAmount} ${currentConfig.currency}\n` +
         `• Network: ${requirements.network}\n` +
         `• Recipient: ${recipient}\n` +
         `• Resource: ${requirements.resource}\n\n` +
@@ -264,7 +308,9 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   };
 
   const resetForm = () => {
-    setAmount('1000000');
+    // ネットワークに応じたデフォルト金額を設定
+    const defaultAmount = selectedNetwork === 'sepolia' ? '1000000000000000' : '1000000';
+    setAmount(defaultAmount);
     setRecipient(currentAddress || '');
     setDescription('x402 Simple Payment Test');
     setError('');
@@ -334,6 +380,27 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '25px' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+              ネットワーク
+            </label>
+            <select
+              value={selectedNetwork}
+              onChange={(e) => setSelectedNetwork(e.target.value as 'polygon' | 'sepolia')}
+              style={{
+                width: '100%',
+                padding: '10px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
+                backgroundColor: 'white'
+              }}
+            >
+              <option value="polygon">Polygon (JPYC)</option>
+              <option value="sepolia">Sepolia (ETH)</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
               受取アドレス
             </label>
             <input
@@ -354,7 +421,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-              金額 (JPYC base units)
+              金額 ({currentConfig.currency} base units)
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -368,7 +435,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                   borderRadius: '6px',
                   fontSize: '14px'
                 }}
-                placeholder="1000000"
+                placeholder={selectedNetwork === 'sepolia' ? '1000000000000000' : '1000000'}
                 min="0"
               />
               <div style={{ 
@@ -379,7 +446,10 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                 fontSize: '12px', 
                 color: '#6b7280' 
               }}>
-                ≈ {(parseFloat(amount || '0') / 1000000).toFixed(0)} JPYC
+                ≈ {selectedNetwork === 'sepolia' 
+                  ? (parseFloat(amount || '0') / Math.pow(10, currentConfig.decimals)).toFixed(6)
+                  : (parseFloat(amount || '0') / 1000000).toFixed(0)
+                } {currentConfig.currency}
               </div>
             </div>
           </div>
