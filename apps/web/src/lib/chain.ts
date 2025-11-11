@@ -23,7 +23,7 @@ export const networkConfigs: Record<string, NetworkConfig> = {
   'sepolia': {
     chainId: 11155111,
     name: 'Ethereum Sepolia (Community)',
-    rpcUrl: 'https://rpc.sepolia.org',
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     jpycAddress: '0xd3eF95d29A198868241FE374A999fc25F6152253',
     nativeSymbol: 'ETH',
     blockExplorer: 'https://sepolia.etherscan.io',
@@ -32,7 +32,7 @@ export const networkConfigs: Record<string, NetworkConfig> = {
   'sepolia-official': {
     chainId: 11155111,
     name: 'Ethereum Sepolia (Official)',
-    rpcUrl: 'https://rpc.sepolia.org',
+    rpcUrl: 'https://rpc2.sepolia.org',
     jpycAddress: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB',
     nativeSymbol: 'ETH',
     blockExplorer: 'https://sepolia.etherscan.io',

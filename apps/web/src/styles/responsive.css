@@ -134,7 +134,7 @@ body {
   }
 }
 
-/* 2カラムレイアウト強制 */
+/* 2カラムレイアウト強制 - 表示問題を修正 */
 @media (min-width: 1024px) {
   /* 接続済み時の2カラムレイアウトを強制 */
   div[style*="flex: 2"] {
@@ -150,5 +150,26 @@ body {
   /* レイアウト切り替え時の遷移を無効化 */
   div[style*="display: flex"] {
     transition: none !important;
+  }
+}
+
+/* モバイル/タブレット用の調整 - タブが常に表示されるように */
+@media (max-width: 1023px) {
+  /* フレックスコンテナを縦に配置 */
+  div[style*="display: flex"][style*="gap: '24px'"] {
+    flex-direction: column !important;
+  }
+  
+  /* 各カラムを全幅に */
+  div[style*="flex: 2"],
+  div[style*="flex: 1"] {
+    flex: none !important;
+    width: 100% !important;
+    min-width: unset !important;
+  }
+  
+  /* QRコードエリアも適切に表示 */
+  .qr-code-container {
+    min-height: 250px;
   }
 }

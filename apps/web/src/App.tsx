@@ -232,12 +232,20 @@ function App() {
                         <p className="text-sm text-gray-500">アカウント:</p>
                         <p className="font-mono text-xs break-all text-gray-700">{walletData.address}</p>
                       </div>
-                      <button
-                        onClick={handleWalletDisconnect}
-                        className="mt-3 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
-                      >
-                        ❌ 切断
-                      </button>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                        <button
+                          onClick={handleWalletDisconnect}
+                          className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
+                        >
+                          ❌ 切断
+                        </button>
+                        <button
+                          onClick={() => window.location.reload()}
+                          className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                        >
+                          🔄 リフレッシュ
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -268,7 +276,11 @@ function App() {
                       { id: 'payment', label: 'QR決済', icon: '📱' },
                       { id: 'x402-simple', label: 'x402決済テスト', icon: '💳' },
                       { id: 'subscription-contract', label: 'サブスク', icon: '📝' },
-                      { id: 'subscription-dashboard', label: 'ダッシュボード', icon: '�' },
+                      { id: 'x402-subscription', label: 'x402サブスク', icon: '🔄' },
+                      { id: 'subscription-dashboard', label: 'ダッシュボード', icon: '📊' },
+                      { id: 'merchant-products', label: '商品管理', icon: '🛍️' },
+                      { id: 'shopping-cart', label: 'ショッピングカート', icon: '🛒' },
+                      { id: 'sepolia-gasless', label: 'Sepoliaガスレス', icon: '⛽' },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -279,35 +291,6 @@ function App() {
                         <span className="hidden-mobile">{tab.label}</span>
                       </button>
                     ))}
-                  </div>
-                  
-                  {/* x402決済のリンク */}
-                  <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e5e7eb' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>
-                      🔗 x402決済リクエストを生成:
-                    </div>
-                    <a 
-                      href="/?page=merchant"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-block',
-                        marginRight: '10px',
-                        marginBottom: '10px',
-                        padding: '8px 12px',
-                        backgroundColor: '#10b981',
-                        color: 'white',
-                        borderRadius: '6px',
-                        textDecoration: 'none',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      🛒 決済リクエスト生成ツールへ
-                    </a>
-                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-                      決済リクエストを生成して、URLで支払者と共有できます
-                    </p>
                   </div>
                 </div>
 

@@ -121,17 +121,24 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         const decoded = JSON.parse(atob(initialRequest));
         
         console.log('🔗 URLからPaymentRequirementsを読み込みました:', decoded);
+        console.log('🔍 デコードされた金額（maxAmountRequired）:', decoded.maxAmountRequired, typeof decoded.maxAmountRequired);
         
         // URLから読み込んだ値を使用
         setPaymentRequirements(decoded);
         setRecipient(decoded.payTo);
-        setAmount(decoded.maxAmountRequired);
+        
+        // maxAmountRequiredはJPY単位で来るので、そのまま表示用のamountに設定
+        const jpyAmount = decoded.maxAmountRequired;
+        console.log('💱 JPY金額の設定:', jpyAmount, typeof jpyAmount);
+        setAmount(jpyAmount);
         setDescription(decoded.description);
         setSelectedNetwork(decoded.network);
         
-        // base units に変換
-        const baseUnits = (BigInt(decoded.maxAmountRequired) * 1000000n).toString();
+        // base units に変換: JPY → base units (1 JPY = 1,000,000 base units)
+        const baseUnits = (parseFloat(jpyAmount) * 1000000).toString();
         setAmountInBaseUnits(baseUnits);
+        
+        console.log(`💰 Amount conversion: ${jpyAmount} JPY → ${baseUnits} base units`);
         
         setIsLoadedFromUrl(true);
       } catch (e) {
@@ -150,9 +157,12 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
   // ネットワーク変更時に適切なデフォルト金額を設定
   useEffect(() => {
-    // 全てのテストネットワークで1 JPYCに統一
+    // URLから読み込まれていない場合のみ、全てのテストネットワークで1 JPYCに統一
     if (!isLoadedFromUrl) {
       setAmount('1'); // 表示用: 1 JPYC
+      console.log('🌐 ネットワーク変更: デフォルト金額を1円に設定');
+    } else {
+      console.log('🌐 ネットワーク変更: URLから読み込み済みのため金額は変更しません');
     }
   }, [selectedNetwork, isLoadedFromUrl]);
 
@@ -195,7 +205,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   };
 
   // x402 PaymentPayload を作成
-  const createPaymentPayload = async (requirements: PaymentRequirements): Promise<PaymentPayload> => {
+  const createPaymentPayload = async (requirements: PaymentRequirements, baseUnitsAmount: string): Promise<PaymentPayload> => {
     if (!signer || !currentAddress) {
       throw new Error('Signer not available');
     }
@@ -207,7 +217,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     const authorization = {
       from: currentAddress,
       to: requirements.payTo,
-      value: requirements.maxAmountRequired,
+      value: baseUnitsAmount, // base unitsを使用
       validAfter: (currentTime - 60).toString(), // 1分前から有効
       validBefore: (currentTime + requirements.maxTimeoutSeconds).toString(),
       nonce: nonce
@@ -328,7 +338,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
       // Step 2: PaymentPayload作成
       console.log('🔐 Step 2: PaymentPayload作成・署名');
-      const payload = await createPaymentPayload(requirements);
+      const payload = await createPaymentPayload(requirements, amountInBaseUnits);
       setPaymentPayload(payload);
       
       console.log('✅ PaymentPayload作成完了:', {
@@ -519,21 +529,93 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
           💳 x402 Simple Payment
         </h2>
 
+        {/* 決済リクエスト情報の表示 */}
+        {isLoadedFromUrl && paymentRequirements && (
+          <div style={{ backgroundColor: '#f0fdf4', border: '2px solid #10b981', borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', marginBottom: '15px' }}>
+              <span style={{ fontSize: '20px' }}>💳</span>
+              <span style={{ fontWeight: '600', fontSize: '16px' }}>決済リクエスト詳細</span>
+            </div>
+
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#dcfce7', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#15803d' }}>💰 支払金額:</span>
+                <span style={{ fontSize: '18px', fontWeight: '700', color: '#15803d' }}>{amount} 円</span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#dcfce7', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#15803d' }}>📝 説明:</span>
+                <span style={{ color: '#15803d' }}>{paymentRequirements.description}</span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#dcfce7', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#15803d' }}>🏪 受取先:</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#15803d' }}>
+                  {paymentRequirements.payTo.slice(0, 8)}...{paymentRequirements.payTo.slice(-6)}
+                </span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#dcfce7', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#15803d' }}>🌐 ネットワーク:</span>
+                <span style={{ color: '#15803d' }}>{paymentRequirements.network}</span>
+              </div>
+            </div>
+
+            <div style={{ 
+              backgroundColor: '#dcfce7', 
+              border: '1px solid #10b981',
+              borderRadius: '6px', 
+              padding: '12px',
+              marginTop: '15px',
+              fontSize: '13px',
+              color: '#15803d'
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '8px' }}>📋 支払い手順:</div>
+              <div style={{ lineHeight: '1.6' }}>
+                1. 上記の決済情報を確認<br/>
+                2. ウォレットを接続（未接続の場合）<br/>
+                3. 下の「💳 x402決済を実行」ボタンをクリック<br/>
+                4. ウォレットで取引を承認
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* x402仕様情報 */}
         <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #0ea5e9', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <span style={{ fontSize: '16px' }}>📋</span>
-            <span style={{ fontWeight: '600', color: '#0c4a6e' }}>x402 Payment Protocol 統合テスト</span>
+            <span style={{ fontWeight: '600', color: '#0c4a6e' }}>
+              {isLoadedFromUrl ? 'x402 決済リクエスト' : 'x402 Payment Protocol 統合テスト'}
+            </span>
           </div>
           <div style={{ fontSize: '14px', color: '#0c4a6e', lineHeight: '1.6' }}>
-            <div style={{ marginBottom: '10px' }}>
-              <strong>このページでできること:</strong>
-            </div>
-            <div style={{ paddingLeft: '15px' }}>
-              1. <strong>🔗 請求URL生成</strong> - マーチャント側: 決済要件をURLで発行<br/>
-              2. <strong>💳 決済実行</strong> - 支払者側: 同じページで決済を実行<br/>
-              3. <strong>🔄 フルテスト</strong> - URL発行→決済実行の一連の流れを確認
-            </div>
+            {isLoadedFromUrl ? (
+              <div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong>🔗 決済リクエストが読み込まれました:</strong>
+                </div>
+                <div style={{ paddingLeft: '15px' }}>
+                  💰 <strong>金額:</strong> {amount} 円<br/>
+                  📝 <strong>説明:</strong> {description}<br/>
+                  🏪 <strong>受取先:</strong> {recipient?.slice(0, 8)}...{recipient?.slice(-6)}<br/>
+                  🌐 <strong>ネットワーク:</strong> {selectedNetwork}
+                </div>
+                <div style={{ marginTop: '10px', fontSize: '12px', backgroundColor: '#dbeafe', padding: '8px', borderRadius: '4px' }}>
+                  💡 下記のフォーム内容は変更できません。「決済を実行」ボタンで支払いを完了してください。
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong>このページでできること:</strong>
+                </div>
+                <div style={{ paddingLeft: '15px' }}>
+                  1. <strong>🔗 請求URL生成</strong> - マーチャント側: 決済要件をURLで発行<br/>
+                  2. <strong>🌐 ブラウザテスト</strong> - 生成されたURLを別タブで開いて決済テスト
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -713,13 +795,15 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
             <select
               value={selectedNetwork}
               onChange={(e) => setSelectedNetwork(e.target.value as 'polygon-amoy' | 'sepolia' | 'sepolia-official' | 'avalanche-fuji')}
+              disabled={isLoadedFromUrl}
               style={{
                 width: '100%',
                 padding: '10px',
                 border: '1px solid #d1d5db',
                 borderRadius: '6px',
                 fontSize: '14px',
-                backgroundColor: 'white'
+                backgroundColor: isLoadedFromUrl ? '#f9fafb' : 'white',
+                cursor: isLoadedFromUrl ? 'not-allowed' : 'pointer'
               }}
             >
               <option value="polygon-amoy">Polygon Amoy (JPYC)</option>
@@ -737,13 +821,16 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
               type="text"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
+              disabled={isLoadedFromUrl}
               style={{ 
                 width: '100%', 
                 padding: '10px', 
                 border: '1px solid #d1d5db', 
                 borderRadius: '6px',
                 fontSize: '14px',
-                fontFamily: 'monospace'
+                fontFamily: 'monospace',
+                backgroundColor: isLoadedFromUrl ? '#f9fafb' : 'white',
+                cursor: isLoadedFromUrl ? 'not-allowed' : 'auto'
               }}
               placeholder={currentAddress || '0x1234567890123456789012345678901234567890'}
             />
@@ -758,12 +845,15 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                 type="number"
                 value={amount}
                 onChange={(e) => handleAmountChange(e.target.value)}
+                disabled={isLoadedFromUrl}
                 style={{ 
                   width: '100%', 
                   padding: '10px', 
                   border: '1px solid #d1d5db', 
                   borderRadius: '6px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  backgroundColor: isLoadedFromUrl ? '#f9fafb' : 'white',
+                  cursor: isLoadedFromUrl ? 'not-allowed' : 'auto'
                 }}
                 placeholder="1"
                 min="1"
@@ -793,12 +883,15 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              disabled={isLoadedFromUrl}
               style={{ 
                 width: '100%', 
                 padding: '10px', 
                 border: '1px solid #d1d5db', 
                 borderRadius: '6px',
-                fontSize: '14px'
+                fontSize: '14px',
+                backgroundColor: isLoadedFromUrl ? '#f9fafb' : 'white',
+                cursor: isLoadedFromUrl ? 'not-allowed' : 'auto'
               }}
               placeholder="Payment description"
             />
@@ -854,83 +947,86 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
         {/* 実行ボタン */}
         <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-          {/* 請求URL生成ボタン */}
-          <button
-            onClick={generatePaymentRequest}
-            disabled={!currentAddress || !recipient || !amount}
-            style={{
-              width: '100%',
-              padding: '16px',
-              borderRadius: '8px',
-              border: 'none',
-              backgroundColor: (!currentAddress || !recipient || !amount) ? '#9ca3af' : '#10b981',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: (!currentAddress || !recipient || !amount) ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-          >
-            <span>🔗</span>
-            請求URL生成（マーチャント側）
-          </button>
-
-          {/* 決済実行ボタン */}
-          <button
-            onClick={executeX402Payment}
-            disabled={loading || !currentAddress}
-            style={{
-              width: '100%',
-              padding: '16px',
-              borderRadius: '8px',
-              border: 'none',
-              backgroundColor: (loading || !currentAddress) ? '#9ca3af' : '#3b82f6',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: (loading || !currentAddress) ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-          >
-            {loading ? (
-              <>
-                <span>⏳</span>
-                x402決済実行中...
-              </>
-            ) : !currentAddress ? (
-              <>
-                <span>🔗</span>
-                ウォレット接続が必要です
-              </>
-            ) : (
-              <>
-                <span>💳</span>
-                x402決済を実行（支払者側）
-              </>
-            )}
-          </button>
+          {/* URLから読み込まれた場合: 決済実行ボタンのみ */}
+          {isLoadedFromUrl ? (
+            <button
+              onClick={executeX402Payment}
+              disabled={loading || !currentAddress}
+              style={{
+                width: '100%',
+                padding: '16px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: (loading || !currentAddress) ? '#9ca3af' : '#10b981',
+                color: 'white',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: (loading || !currentAddress) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              {loading ? (
+                <>
+                  <span>⏳</span>
+                  決済処理中...
+                </>
+              ) : !currentAddress ? (
+                <>
+                  <span>🔗</span>
+                  ウォレット接続が必要です
+                </>
+              ) : (
+                <>
+                  <span>💳</span>
+                  x402決済を実行
+                </>
+              )}
+            </button>
+          ) : (
+            /* 通常時: 請求URL生成ボタンのみ */
+            <button
+              onClick={generatePaymentRequest}
+              disabled={!currentAddress || !recipient || !amount}
+              style={{
+                width: '100%',
+                padding: '16px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: (!currentAddress || !recipient || !amount) ? '#9ca3af' : '#10b981',
+                color: 'white',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: (!currentAddress || !recipient || !amount) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>🔗</span>
+              請求URL生成（マーチャント側）
+            </button>
+          )}
 
           <button
             onClick={resetForm}
+            disabled={isLoadedFromUrl}
             style={{
               width: '100%',
               padding: '12px 20px',
               borderRadius: '8px',
               border: '1px solid #d1d5db',
-              backgroundColor: 'white',
-              color: '#374151',
+              backgroundColor: isLoadedFromUrl ? '#f9fafb' : 'white',
+              color: isLoadedFromUrl ? '#9ca3af' : '#374151',
               fontSize: '14px',
               fontWeight: '500',
-              cursor: 'pointer'
+              cursor: isLoadedFromUrl ? 'not-allowed' : 'pointer'
             }}
           >
-            リセット
+            {isLoadedFromUrl ? 'リセット（無効）' : 'リセット'}
           </button>
         </div>
 
