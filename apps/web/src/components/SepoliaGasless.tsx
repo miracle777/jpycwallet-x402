@@ -90,11 +90,11 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
     
     console.log('🔄 メタトランザクション実行中...');
     
-    // EIP-712署名によるメタトランザクション
+    // メタトランザクション実装
     const messageData = {
       from: currentAddress,
       to: recipientAddress,
-      value: ethers.parseEther(amount),
+      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
       nonce: await signer.provider!.getTransactionCount(currentAddress!),
       gasLimit: '21000',
       data: '0x',
@@ -107,10 +107,10 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
     
     console.log('📝 署名完了:', signature.slice(0, 20) + '...');
     
-    // リレーヤーシミュレーション - 実際の送金実行
+    // リレーヤーシミュレーション - 実際のJPYC送金実行
     const tx = await signer.sendTransaction({
       to: recipientAddress,
-      value: ethers.parseEther(amount),
+      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
       gasLimit: 21000
     });
     
@@ -139,7 +139,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
     // ペイマスターシミュレーション
     const tx = await signer.sendTransaction({
       to: recipientAddress,
-      value: ethers.parseEther(amount),
+      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
       gasLimit: 21000
     });
     
@@ -157,7 +157,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
     const relayRequest = {
       from: currentAddress,
       to: recipientAddress,
-      value: ethers.parseEther(amount),
+      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
       gas: 100000,
       nonce: await signer.provider!.getTransactionCount(currentAddress!)
     };
@@ -168,7 +168,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
     // リレーヤーシミュレーション
     const tx = await signer.sendTransaction({
       to: recipientAddress,
-      value: ethers.parseEther(amount),
+      value: ethers.parseUnits(amount, 18), // JPYC (18 decimals)
       gasLimit: 21000
     });
     
@@ -316,7 +316,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
           {/* 送金フォーム */}
           <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '20px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
             <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>
-              💸 Sepolia ETH送金
+              💸 Sepolia JPYC送金
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -342,7 +342,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
               
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  送金金額 (ETH)
+                  送金金額 (JPYC)
                 </label>
                 <input
                   type="number"
