@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import AmbireLogin from "./AmbireLogin";
 import SubscriptionContract from "./components/SubscriptionContract";
@@ -12,6 +12,7 @@ import X402Subscription from "./components/X402Subscription";
 import NetworkSelector from "./components/NetworkSelector";
 import FaucetGuide from "./components/FaucetGuide";
 import QRCodeDisplay from "./components/QRCodeDisplay";
+import MerchantPaymentRequest from "./components/MerchantPaymentRequest";
 import type { ChainKey } from "./lib/onboard";
 
 function App() {
@@ -22,6 +23,29 @@ function App() {
 
   const [selectedNetwork, setSelectedNetwork] = useState<ChainKey>('sepolia');
   const [activeTab, setActiveTab] = useState<'payment' | 'x402-simple' | 'subscription-contract' | 'x402-subscription' | 'subscription-dashboard' | 'merchant-products' | 'shopping-cart' | 'sepolia-gasless'>('payment');
+  
+  // ページ管理: 'main' | 'merchant' | 'pay'
+  const [currentPage, setCurrentPage] = useState<'main' | 'merchant' | 'pay'>('main');
+  const [paymentRequest, setPaymentRequest] = useState<string>('');
+
+  // URLパラメータをチェック
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const path = window.location.pathname;
+    
+    // /merchant パスか ?page=merchant
+    if (path.includes('/merchant') || params.get('page') === 'merchant') {
+      setCurrentPage('merchant');
+    }
+    // /pay パスか ?request= パラメータ
+    else if (path.includes('/pay') || params.has('request')) {
+      const request = params.get('request') || '';
+      setPaymentRequest(request);
+      setCurrentPage('pay');
+    } else {
+      setCurrentPage('main');
+    }
+  }, []);
   
   // QRコード関連の状態
   const [qrCodeData, setQrCodeData] = useState<string>('');
@@ -62,15 +86,102 @@ function App() {
     // 現在のタブに応じて再生成をトリガー
   };
 
+  // ページ別レンダリング
+  if (currentPage === 'merchant') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="w-full px-4 py-8">
+          {/* ヘッダー */}
+          <div className="max-w-7xl mx-auto text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">🛍️ Merchant Payment Request</h1>
+            <p className="text-gray-600">x402 Payment Protocol - Merchant Side</p>
+          </div>
+
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <AmbireLogin 
+                onConnect={handleWalletConnect} 
+                onDisconnect={handleWalletDisconnect}
+              />
+              
+              {walletData.address && (
+                <div className="mt-6">
+                  <MerchantPaymentRequest
+                    currentAddress={walletData.address}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* メインページへのリンク */}
+          <div className="text-center mt-8">
+            <a 
+              href="/?page=main"
+              className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              ← メインページに戻る
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentPage === 'pay') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="w-full px-4 py-8">
+          {/* ヘッダー */}
+          <div className="max-w-7xl mx-auto text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">💳 x402 Payment</h1>
+            <p className="text-gray-600">x402 Payment Protocol - Payer Side</p>
+          </div>
+
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <AmbireLogin 
+                onConnect={handleWalletConnect} 
+                onDisconnect={handleWalletDisconnect}
+              />
+              
+              {walletData.address && (
+                <div className="mt-6">
+                  <X402SimplePayment
+                    currentAddress={walletData.address}
+                    signer={walletData.signer || undefined}
+                    initialRequest={paymentRequest}
+                    onPaymentComplete={handlePaymentComplete}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* メインページへのリンク */}
+          <div className="text-center mt-8">
+            <a 
+              href="/?page=main"
+              className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              ← メインページに戻る
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // メインページ
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="w-full px-4 py-8">
         {/* ヘッダー */}
         <div className="max-w-7xl mx-auto text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">JPYC Wallet x402</h1>
-          <p className="text-gray-600">Multi-Network Payment App with x402 Protocol</p>
-          <p className="text-sm text-orange-600 mt-2">
-            ⚠️ x402プロトコル対応版
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">🛍️ JPYC x402 Payment</h1>
+          <p className="text-gray-600">Merchant Payment Request Generator</p>
+          <p className="text-sm text-gray-500 mt-2">
+            x402プロトコルを使用したメーチャント向け決済リクエスト生成ツール
           </p>
         </div>
 
@@ -80,7 +191,6 @@ function App() {
             /* 未接続時: 中央配置 */
             <div className="max-w-md mx-auto">
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4">ウォレット接続</h2>
                 <AmbireLogin 
                   onConnect={handleWalletConnect} 
                   onDisconnect={handleWalletDisconnect}
@@ -108,9 +218,9 @@ function App() {
               </div>
               
               <div className="text-center text-gray-600 mt-6">
-                <p>ウォレットを接続してJPYC決済機能をお試しください</p>
+                <p>ウォレットを接続して開始</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  ※ Sepolia（テスト）・Polygon（本番）ネットワーク対応
+                  ※ Polygon Amoy・Ethereum Sepolia・Avalanche Fuji対応
                 </p>
               </div>
             </div>
@@ -119,20 +229,21 @@ function App() {
             <div style={{ display: 'flex', gap: '24px', width: '100%' }}>
               {/* 左カラム: 設定・操作エリア（2/3幅） */}
               <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: '0' }}>
-                {/* ウォレット情報 */}
-                <div className="bg-white rounded-lg shadow-md p-6">{/* Tailwindスタイル */}
-                  <h2 className="text-xl font-semibold mb-4">ウォレット接続</h2>
-                  <AmbireLogin 
-                    onConnect={handleWalletConnect} 
-                    onDisconnect={handleWalletDisconnect}
-                  />
-                  
-                  {walletData.address && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-600">接続済みアカウント:</p>
-                      <p className="font-mono text-xs break-all">{walletData.address}</p>
+                {/* ウォレット情報サマリー */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h2 className="text-lg font-semibold mb-3">接続済みウォレット</h2>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm text-gray-500">アカウント:</p>
+                      <p className="font-mono text-xs break-all text-gray-700">{walletData.address}</p>
                     </div>
-                  )}
+                    <button
+                      onClick={handleWalletDisconnect}
+                      className="mt-3 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
+                    >
+                      ❌ 切断
+                    </button>
+                  </div>
                 </div>
 
                 {/* ネットワーク選択 */}
@@ -160,13 +271,9 @@ function App() {
                   <div className="nav-tabs">
                     {[
                       { id: 'payment', label: 'QR決済', icon: '📱' },
-                      { id: 'x402-simple', label: 'x402決済', icon: '💳' },
+                      { id: 'x402-simple', label: 'x402決済テスト', icon: '💳' },
                       { id: 'subscription-contract', label: 'サブスク', icon: '📝' },
-                      { id: 'x402-subscription', label: 'x402サブスク', icon: '🔄' },
-                      { id: 'subscription-dashboard', label: 'ダッシュボード', icon: '📊' },
-                      { id: 'merchant-products', label: '商品管理', icon: '🏪' },
-                      { id: 'shopping-cart', label: 'カート', icon: '🛒' },
-                      { id: 'sepolia-gasless', label: 'JPYCガスレス', icon: '⛽' }
+                      { id: 'subscription-dashboard', label: 'ダッシュボード', icon: '�' },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -177,6 +284,33 @@ function App() {
                         <span className="hidden-mobile">{tab.label}</span>
                       </button>
                     ))}
+                  </div>
+                  
+                  {/* x402決済のリンク */}
+                  <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e5e7eb' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>
+                      � x402決済リクエストを生成:
+                    </div>
+                    <a 
+                      href="/?page=merchant"
+                      style={{
+                        display: 'inline-block',
+                        marginRight: '10px',
+                        marginBottom: '10px',
+                        padding: '8px 12px',
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        borderRadius: '6px',
+                        textDecoration: 'none',
+                        fontSize: '12px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      � 決済リクエスト生成ツールへ
+                    </a>
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                      決済リクエストを生成して、URLで支払者と共有できます
+                    </p>
                   </div>
                 </div>
 

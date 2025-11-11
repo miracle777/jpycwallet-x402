@@ -1,15 +1,17 @@
 import React, { useState, useRef } from 'react';
 import QRCode from 'qrcode';
 // import { Download, Copy, QrCode, Building, MapPin, Globe, Check, Edit, Save, X } from 'lucide-react';
-import { 
+import type { 
   MerchantInfo, 
   PaymentItem,
+  QRCodeFormat 
+} from '../lib/merchant';
+import {
   createPaymentRequest,
   paymentRequestToQRData,
   validateMerchantInfo,
   defaultMerchantInfo,
-  merchantCategories,
-  type QRCodeFormat 
+  merchantCategories
 } from '../lib/merchant';
 
 interface PaymentRequestProps {
@@ -143,7 +145,7 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated }) => {
       {/* ヘッダー */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
         <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-          <QrCode className="h-6 w-6 text-blue-600" />
+          <span style={{ fontSize: '24px' }}>📱</span>
           決済QRコード生成
         </h2>
         <p className="text-gray-600">店舗情報付きの決済QRコードを生成できます</p>
@@ -153,14 +155,14 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated }) => {
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Building className="h-5 w-5 text-gray-600" />
+            <span style={{ fontSize: '20px' }}>🏢</span>
             店舗情報
           </h3>
           <button
             onClick={() => setIsEditingMerchant(!isEditingMerchant)}
             className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
-            {isEditingMerchant ? <X className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+            <span style={{ fontSize: '16px' }}>{isEditingMerchant ? '✖️' : '✏️'}</span>
             {isEditingMerchant ? 'キャンセル' : '編集'}
           </button>
         </div>
@@ -276,7 +278,7 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated }) => {
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <Save className="h-4 w-4" />
+                <span style={{ fontSize: '16px' }}>💾</span>
                 保存
               </button>
             </div>
@@ -284,7 +286,7 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated }) => {
         ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <Building className="h-5 w-5 text-gray-600" />
+              <span style={{ fontSize: '20px' }}>🏢</span>
               <div>
                 <h4 className="font-semibold text-gray-900">{merchant.name}</h4>
                 <p className="text-sm text-gray-600">ID: {merchant.id}</p>
@@ -301,13 +303,13 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated }) => {
               )}
               {merchant.location && (
                 <span className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
+                  <span style={{ fontSize: '12px' }}>📍</span>
                   {merchant.location}
                 </span>
               )}
               {merchant.website && (
                 <a href={merchant.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:text-blue-800">
-                  <Globe className="h-3 w-3" />
+                  <span style={{ fontSize: '12px' }}>🌐</span>
                   ウェブサイト
                 </a>
               )}
@@ -473,7 +475,7 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated }) => {
                   onClick={() => removeItem(index)}
                   className="p-1 text-red-600 hover:text-red-800"
                 >
-                  <X className="h-4 w-4" />
+                  <span style={{ fontSize: '16px' }}>✖️</span>
                 </button>
               </div>
             ))}
@@ -517,14 +519,14 @@ const PaymentRequest: React.FC<PaymentRequestProps> = ({ onQRGenerated }) => {
                 onClick={copyToClipboard}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
-                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                <span style={{ fontSize: '16px' }}>{copied ? '✅' : '📋'}</span>
                 {copied ? 'コピー済み' : 'データをコピー'}
               </button>
               <button
                 onClick={downloadQRCode}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
-                <Download className="h-4 w-4" />
+                <span style={{ fontSize: '16px' }}>⬇️</span>
                 画像をダウンロード
               </button>
             </div>

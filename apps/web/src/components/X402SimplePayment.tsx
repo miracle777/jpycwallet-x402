@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { getErc20Contract } from '../lib/jpyc';
 import { jpycAddress } from '../lib/chain';
@@ -7,6 +7,8 @@ interface X402SimplePaymentProps {
   currentAddress?: string;
   signer?: ethers.Signer;
   onPaymentComplete?: (txHash: string) => void;
+  networkConfigs?: Record<string, any>;
+  initialRequest?: string; // Base64エンコードされたPaymentRequirements
 }
 
 // x402 PaymentRequirements 形式
@@ -55,6 +57,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   currentAddress,
   signer,
   onPaymentComplete,
+  networkConfigs: externalNetworkConfigs,
+  initialRequest,
 }) => {
   const [amount, setAmount] = useState('1'); // デフォルト: 1 JPYC（表示用）
   const [amountInBaseUnits, setAmountInBaseUnits] = useState('1000000'); // 内部用: base units
@@ -66,9 +70,10 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   const [success, setSuccess] = useState<string>('');
   const [paymentRequirements, setPaymentRequirements] = useState<PaymentRequirements | null>(null);
   const [paymentPayload, setPaymentPayload] = useState<PaymentPayload | null>(null);
+  const [isLoadedFromUrl, setIsLoadedFromUrl] = useState(false);
 
-  // ネットワーク設定
-  const networkConfig = {
+  // ネットワーク設定（デフォルト）
+  const defaultNetworkConfig = {
     'polygon-amoy': {
       chainId: 80002n,
       name: 'Polygon Amoy',
@@ -103,20 +108,51 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     }
   };
 
+  // 外部から渡されたネットワーク設定があればそれを使用、なければデフォルトを使用
+  const networkConfig = externalNetworkConfigs || defaultNetworkConfig;
   const currentConfig = networkConfig[selectedNetwork];
 
-  // ウォレット接続時に受取アドレスを自動設定
-  React.useEffect(() => {
-    if (currentAddress && !recipient) {
+  // URLからPaymentRequirementsを読み込み
+  useEffect(() => {
+    if (initialRequest && !isLoadedFromUrl) {
+      try {
+        const decoded = JSON.parse(atob(initialRequest));
+        
+        console.log('🔗 URLからPaymentRequirementsを読み込みました:', decoded);
+        
+        // URLから読み込んだ値を使用
+        setPaymentRequirements(decoded);
+        setRecipient(decoded.payTo);
+        setAmount(decoded.maxAmountRequired);
+        setDescription(decoded.description);
+        setSelectedNetwork(decoded.network);
+        
+        // base units に変換
+        const baseUnits = (BigInt(decoded.maxAmountRequired) * 1000000n).toString();
+        setAmountInBaseUnits(baseUnits);
+        
+        setIsLoadedFromUrl(true);
+      } catch (e) {
+        console.error('URLの読み込みに失敗しました:', e);
+        setError('決済リクエストの読み込みに失敗しました。');
+      }
+    }
+  }, [initialRequest, isLoadedFromUrl]);
+
+  // ウォレット接続時に受取アドレスを自動設定（URLから読み込まれていない場合）
+  useEffect(() => {
+    if (currentAddress && !recipient && !isLoadedFromUrl) {
       setRecipient(currentAddress);
     }
-  }, [currentAddress, recipient]);
+  }, [currentAddress, recipient, isLoadedFromUrl]);
 
   // ネットワーク変更時に適切なデフォルト金額を設定
-  React.useEffect(() => {
+  useEffect(() => {
     // 全てのテストネットワークで1 JPYCに統一
-    setAmount('1'); // 表示用: 1 JPYC
-  }, [selectedNetwork]);
+    if (!isLoadedFromUrl) {
+      setAmount('1'); // 表示用: 1 JPYC
+    }
+  }, [selectedNetwork, isLoadedFromUrl]);
 
   // 金額変更時に base units に変換
   const handleAmountChange = (value: string) => {
@@ -324,17 +360,37 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         const transferAmount = BigInt(amountInBaseUnits);
         console.log(`Transferring ${amountInBaseUnits} base units (${parseFloat(amountInBaseUnits) / 1000000} JPYC) to ${recipient}`);
         
-        // 事前チェック: 残高確認
-        const balance = await jpycContract.balanceOf(currentAddress);
-        console.log(`💰 Current balance: ${balance.toString()}, Transfer amount: ${transferAmount.toString()}`);
-        if (balance < transferAmount) {
-          throw new Error(`残高不足です。必要: ${transferAmount}, 保有: ${balance}`);
+        // 事前チェック: 残高確認（最新データを取得）
+        console.log('💰 残高チェック中...');
+        try {
+          const balance = await jpycContract.balanceOf(currentAddress);
+          console.log(`💰 Current balance: ${balance.toString()}, Transfer amount: ${transferAmount.toString()}`);
+          if (balance < transferAmount) {
+            throw new Error(`残高不足です。必要: ${transferAmount}, 保有: ${balance}`);
+          }
+        } catch (e: any) {
+          console.error('残高チェックエラー:', e);
+          throw e;
         }
         
         const tx = await jpycContract.transfer(recipient, transferAmount);
+        console.log('⏳ トランザクション確認中:', tx.hash);
         receipt = await tx.wait();
+        console.log('✅ トランザクション完了:', receipt?.hash);
       }
       console.log(`🎉 ${currentConfig.currency} transfer完了:`, receipt?.hash);
+
+      // トランザクション確認後に残高を再読み込み（JPYC の場合）
+      if (selectedNetwork !== 'sepolia') {
+        try {
+          console.log('🔄 残高を再読み込み中...');
+          const contract = getErc20Contract(signer);
+          const newBalance = await contract.balanceOf(currentAddress);
+          console.log(`🔄 新しい残高: ${newBalance.toString()}`);
+        } catch (e) {
+          console.log('残高再読み込み時の注意:', e);
+        }
+      }
 
       const displayAmount = selectedNetwork === 'sepolia' 
         ? (parseFloat(amount) / Math.pow(10, currentConfig.decimals)).toFixed(4)
@@ -353,7 +409,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         `• Signature: ${payload.payload.signature?.slice(0, 30)}...\n\n` +
         `⛓️ Transaction:\n` +
         `• Hash: ${receipt?.hash}\n` +
-        `• Block: ${receipt?.blockNumber}`
+        `• Block: ${receipt?.blockNumber}\n\n` +
+        `💡 ヒント: 次の決済では、ページを再読み込み（F5）してから実行してください。`
       );
 
       onPaymentComplete?.(receipt?.hash || '');

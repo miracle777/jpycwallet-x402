@@ -101,11 +101,12 @@ const GaslessPayment: React.FC<GaslessPaymentProps> = ({
     console.log('📝 署名完了:', signature.slice(0, 20) + '...');
     
     // 実際の送金実行（リレーヤーシミュレーション）
+    const feeData = await signer.provider!.getFeeData();
     const tx = await signer.sendTransaction({
       to: recipientAddress,
       value: ethers.parseEther(amount),
       gasLimit: 21000,
-      gasPrice: await signer.provider!.getGasPrice()
+      gasPrice: feeData.gasPrice || undefined
     });
     
     await tx.wait();
@@ -167,7 +168,7 @@ const GaslessPayment: React.FC<GaslessPaymentProps> = ({
         data: '0x',
       },
       relayData: {
-        gasPrice: await signer.provider!.getGasPrice(),
+        gasPrice: (await signer.provider!.getFeeData()).gasPrice || 1000000000n,
         pctRelayFee: 10, // 10%手数料
         baseRelayFee: 0,
         relayWorker: currentAddress,
@@ -224,7 +225,13 @@ const GaslessPayment: React.FC<GaslessPaymentProps> = ({
       status: '開発中'
     }
   ];
-      
+
+  const executeGaslessPayment = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      // プレースホルダー実装
       // 1. Ambire Smart Account の取得
       // 2. Paymaster の設定
       // 3. メタトランザクションの作成
