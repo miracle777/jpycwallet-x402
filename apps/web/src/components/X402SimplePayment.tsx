@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 import { getErc20Contract } from '../lib/jpyc';
 import { jpycAddress } from '../lib/chain';
@@ -71,6 +71,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   const [paymentRequirements, setPaymentRequirements] = useState<PaymentRequirements | null>(null);
   const [paymentPayload, setPaymentPayload] = useState<PaymentPayload | null>(null);
   const [isLoadedFromUrl, setIsLoadedFromUrl] = useState(false);
+  const isLoadedFromUrlRef = useRef(false); // 同期的な状態管理用
   const [generatedPaymentUrl, setGeneratedPaymentUrl] = useState<string>('');
   const [urlCopied, setUrlCopied] = useState(false);
 
@@ -110,9 +111,27 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     }
   };
 
-  // 外部から渡されたネットワーク設定があればそれを使用、なければデフォルトを使用
-  const networkConfig = externalNetworkConfigs || defaultNetworkConfig;
-  const currentConfig = networkConfig[selectedNetwork];
+  const networkConfig = { ...defaultNetworkConfig };
+
+  // chainIdからネットワーク設定を検索するヘルパー関数
+  const findNetworkConfigByChainId = (chainIdStr: string) => {
+    const targetChainId = BigInt(chainIdStr);
+    const entry = Object.entries(networkConfig).find(([, config]) => config.chainId === targetChainId);
+    return entry ? { key: entry[0], config: entry[1] } : null;
+  };
+
+  // 現在の設定を取得（selectedNetworkがchainIdの場合も対応）
+  const getCurrentNetworkConfig = () => {
+    // まず直接キーで検索
+    if (networkConfig[selectedNetwork]) {
+      return networkConfig[selectedNetwork];
+    }
+    // chainIdで検索
+    const found = findNetworkConfigByChainId(selectedNetwork);
+    return found ? found.config : networkConfig.sepolia; // フォールバック
+  };
+
+  const currentConfig = getCurrentNetworkConfig();
 
   // URLパラメータから初期データを設定（最優先）
   useEffect(() => {
@@ -135,20 +154,27 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         
         // base units に変換: JPY → base units (1 JPY = 1,000,000 base units)
         const baseUnits = (parseFloat(jpyAmount) * 1000000).toString();
-        setAmountInBaseUnits(baseUnits);
         
-        console.log(`💰 Amount conversion: ${jpyAmount} JPY → ${baseUnits} base units`);
-        
-        // 先にフラグを設定してネットワーク変更の影響を防ぐ
+        // まず先にrefでフラグを設定してネットワーク変更の影響を防ぐ
+        isLoadedFromUrlRef.current = true;
         setIsLoadedFromUrl(true);
         console.log('✅ URLからの読み込み完了フラグ設定');
         
-        // その後で値を設定
+        // その後で値を一括設定（React.batchの恩恵を受ける）
         setAmount(jpyAmount);
         setDescription(decoded.description);
-        setSelectedNetwork(decoded.network);
+        setAmountInBaseUnits(baseUnits);
+        setRecipient(decoded.payTo);
+        setPaymentRequirements(decoded);
         
+        console.log(`💰 Amount conversion: ${jpyAmount} JPY → ${baseUnits} base units`);
         console.log('✅ URLからの読み込み完了');
+        
+        // ネットワークは最後に設定（状態更新の競合を避けるため少し遅延）
+        setTimeout(() => {
+          setSelectedNetwork(decoded.network);
+          console.log('🌐 ネットワーク設定完了:', decoded.network);
+        }, 10);
         
       } catch (e) {
         console.error('URLの読み込みに失敗しました:', e);
@@ -164,10 +190,10 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
   // ネットワーク変更時に適切なデフォルト金額を設定（URLから読み込まれていない場合のみ）
   useEffect(() => {
-    console.log('🌐 ネットワーク変更処理開始: isLoadedFromUrl =', isLoadedFromUrl, 'selectedNetwork =', selectedNetwork);
+    console.log('🌐 ネットワーク変更処理開始: isLoadedFromUrl =', isLoadedFromUrlRef.current, 'selectedNetwork =', selectedNetwork);
     
-    // URLから読み込まれている場合は何もしない
-    if (isLoadedFromUrl) {
+    // refを使って同期的にチェック - URLから読み込まれている場合は何もしない
+    if (isLoadedFromUrlRef.current) {
       console.log('🌐 ネットワーク変更: URLから読み込み済みのため金額は変更しません');
       return;
     }
@@ -175,7 +201,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     // URLから読み込まれていない場合のみ、全てのテストネットワークで1 JPYCに統一
     setAmount('1'); // 表示用: 1 JPYC
     console.log('🌐 ネットワーク変更: デフォルト金額を1円に設定');
-  }, [selectedNetwork, isLoadedFromUrl]);
+  }, [selectedNetwork]); // isLoadedFromUrlを依存関係から除外
 
   // 金額変更時に base units に変換
   const handleAmountChange = (value: string) => {
@@ -228,7 +254,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     const authorization = {
       from: currentAddress,
       to: requirements.payTo,
-      value: baseUnitsAmount, // base unitsを使用
+      value: requirements.maxAmountRequired.toString(), // JPY単位を使用
       validAfter: (currentTime - 60).toString(), // 1分前から有効
       validBefore: (currentTime + requirements.maxTimeoutSeconds).toString(),
       nonce: nonce
@@ -307,6 +333,10 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
     try {
       console.log('🚀 x402決済フロー開始');
+      console.log('📊 Debug info:');
+      console.log('  selectedNetwork:', selectedNetwork);
+      console.log('  currentConfig:', currentConfig);
+      console.log('  paymentRequirements:', paymentRequirements);
 
       // Step 0: ネットワークチェック
       // provider.getNetwork()が機能しない場合は、signerのproviderから直接chainIdを取得
@@ -488,7 +518,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         mimeType: 'application/json',
         payTo: recipient,
         maxTimeoutSeconds: 3600, // 1時間
-        asset: currentConfig.jpycAddress,
+        asset: currentConfig.asset,
         extra: {
           name: 'jpycwallet-x402',
           version: '1.0.0'
@@ -849,38 +879,60 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-              金額 (JPYC / 円) - 整数のみ
+              金額 (JPYC / 円) {isLoadedFromUrl ? '- 決済リクエストで指定済み' : '- 整数のみ'}
             </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                disabled={isLoadedFromUrl}
-                style={{ 
+            {isLoadedFromUrl ? (
+              /* URLから読み込んだ場合: 読み取り専用表示 */
+              <div>
+                <div style={{ 
                   width: '100%', 
                   padding: '10px', 
-                  border: '1px solid #d1d5db', 
+                  border: '2px solid #10b981', 
                   borderRadius: '6px',
-                  fontSize: '14px',
-                  backgroundColor: isLoadedFromUrl ? '#f9fafb' : 'white',
-                  cursor: isLoadedFromUrl ? 'not-allowed' : 'auto'
-                }}
-                placeholder="1"
-                min="1"
-                step="1"
-              />
-              <div style={{ 
-                position: 'absolute', 
-                right: '10px', 
-                top: '50%', 
-                transform: 'translateY(-50%)', 
-                fontSize: '12px', 
-                color: '#6b7280' 
-              }}>
-                {amount ? `${Math.floor(parseFloat(amount))} 円` : '0 円'}
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  backgroundColor: '#f0fdf4',
+                  color: '#15803d',
+                  textAlign: 'center'
+                }}>
+                  {amount} 円
+                </div>
+                {/* デバッグ情報 */}
+                <div style={{ fontSize: '10px', color: '#666', marginTop: '5px', textAlign: 'center' }}>
+                  DEBUG: amount={amount}, isLoadedFromUrl={isLoadedFromUrl.toString()}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* 手動入力の場合: 通常の入力フォーム */
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '10px', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    backgroundColor: 'white'
+                  }}
+                  placeholder="1"
+                  min="1"
+                  step="1"
+                />
+                <div style={{ 
+                  position: 'absolute', 
+                  right: '10px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)', 
+                  fontSize: '12px', 
+                  color: '#6b7280' 
+                }}>
+                  {amount ? `${Math.floor(parseFloat(amount))} 円` : '0 円'}
+                </div>
+              </div>
+            )}
             <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
               Base Units: {amountInBaseUnits}
             </div>
