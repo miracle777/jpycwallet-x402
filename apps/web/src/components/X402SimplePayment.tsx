@@ -71,6 +71,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   const [paymentRequirements, setPaymentRequirements] = useState<PaymentRequirements | null>(null);
   const [paymentPayload, setPaymentPayload] = useState<PaymentPayload | null>(null);
   const [isLoadedFromUrl, setIsLoadedFromUrl] = useState(false);
+  const [generatedPaymentUrl, setGeneratedPaymentUrl] = useState<string>('');
+  const [urlCopied, setUrlCopied] = useState(false);
 
   // ネットワーク設定（デフォルト）
   const defaultNetworkConfig = {
@@ -441,6 +443,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     setSuccess('');
     setPaymentRequirements(null);
     setPaymentPayload(null);
+    setGeneratedPaymentUrl('');
+    setUrlCopied(false);
   };
 
   // 請求URL生成機能
@@ -478,13 +482,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       const paymentUrl = `${baseUrl}/pay?request=${encodedRequest}`;
       
       // 成功メッセージとURL表示
-      setSuccess(`📋 請求URL生成完了！
-
-🔗 決済URL:
-${paymentUrl}
-
-💡 この URLを支払者に送信してください。
-支払者がアクセスすると、決済画面が表示されます。`);
+      setSuccess(`📋 請求URL生成完了！`);
       
       // PaymentRequirements を状態に保存
       setPaymentRequirements(paymentRequirements);
@@ -492,10 +490,20 @@ ${paymentUrl}
       console.log('📋 PaymentRequirements generated:', paymentRequirements);
       console.log('🔗 Payment URL:', paymentUrl);
       
+      // URLを状態に保存（表示用）
+      setGeneratedPaymentUrl(paymentUrl);
+      
     } catch (error) {
       console.error('❌ Payment request generation error:', error);
       setError(`請求URL生成エラー: ${(error as Error).message}`);
     }
+  };
+
+  // URLコピー機能
+  const copyPaymentUrl = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setUrlCopied(true);
+    setTimeout(() => setUrlCopied(false), 2000);
   };
 
   return (
@@ -550,6 +558,148 @@ ${paymentUrl}
             </div>
             <div style={{ fontSize: '14px', color: '#15803d', whiteSpace: 'pre-line', fontFamily: 'monospace' }}>
               {success}
+            </div>
+          </div>
+        )}
+
+        {/* 生成された請求URL表示 */}
+        {generatedPaymentUrl && (
+          <div style={{ backgroundColor: '#f0f9ff', border: '2px solid #0ea5e9', borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0c4a6e', marginBottom: '15px' }}>
+              <span style={{ fontSize: '20px' }}>🔗</span>
+              <span style={{ fontWeight: '600', fontSize: '16px' }}>決済用URL生成完了！</span>
+            </div>
+
+            {/* URL表示エリア（スクロール可能） */}
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '500', color: '#0c4a6e', marginBottom: '8px' }}>
+                📱 決済用URL:
+              </div>
+              
+              <div style={{
+                backgroundColor: '#dbeafe',
+                border: '2px solid #0ea5e9',
+                borderRadius: '6px',
+                padding: '12px',
+                marginBottom: '10px',
+                maxHeight: '100px',
+                overflowY: 'auto',
+                wordBreak: 'break-all',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                lineHeight: '1.4',
+                color: '#0c4a6e'
+              }}>
+                {generatedPaymentUrl}
+              </div>
+              
+              {/* アクションボタン */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap',
+                marginBottom: '10px'
+              }}>
+                <button
+                  onClick={() => copyPaymentUrl(generatedPaymentUrl)}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#0c4a6e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {urlCopied ? '✅ コピー済み' : '📋 URLをコピー'}
+                </button>
+                
+                <a
+                  href={generatedPaymentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#0ea5e9',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    textDecoration: 'none',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  🔗 新しいウィンドウで開く
+                </a>
+                
+                <button
+                  onClick={() => {
+                    // QRコード生成（簡易版）
+                    const newWindow = window.open('', '_blank', 'width=400,height=500');
+                    if (newWindow) {
+                      newWindow.document.write(`
+                        <html>
+                          <head><title>QRコード - 決済用URL</title></head>
+                          <body style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
+                            <h2>📱 決済用QRコード</h2>
+                            <div style="margin: 20px 0;">
+                              <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(generatedPaymentUrl)}" alt="QR Code" style="border: 1px solid #ddd; border-radius: 8px;" />
+                            </div>
+                            <p style="font-size: 12px; color: #666; margin-top: 20px; word-break: break-all;">
+                              URL: ${generatedPaymentUrl}
+                            </p>
+                            <button onclick="navigator.clipboard.writeText('${generatedPaymentUrl}').then(() => alert('URLがクリップボードにコピーされました'))" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                              📋 URLをコピー
+                            </button>
+                          </body>
+                        </html>
+                      `);
+                    }
+                  }}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#8b5cf6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  📱 QRコード表示
+                </button>
+              </div>
+            </div>
+
+            {/* 使い方説明 */}
+            <div style={{ 
+              backgroundColor: '#dbeafe', 
+              border: '1px solid #0ea5e9',
+              borderRadius: '6px', 
+              padding: '12px',
+              marginBottom: '15px',
+              fontSize: '13px',
+              color: '#0c4a6e'
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '8px' }}>📝 このURLの使い方:</div>
+              <div style={{ lineHeight: '1.6' }}>
+                1. 上のURLをコピー<br/>
+                2. 支払者に共有（メール、QRコード等）<br/>
+                3. 支払者がURLにアクセス<br/>
+                4. 支払者がウォレット接続して決済実行
+              </div>
             </div>
           </div>
         )}

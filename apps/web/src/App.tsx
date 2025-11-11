@@ -284,10 +284,12 @@ function App() {
                   {/* x402決済のリンク */}
                   <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e5e7eb' }}>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>
-                      � x402決済リクエストを生成:
+                      🔗 x402決済リクエストを生成:
                     </div>
                     <a 
                       href="/?page=merchant"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       style={{
                         display: 'inline-block',
                         marginRight: '10px',
@@ -301,7 +303,7 @@ function App() {
                         fontWeight: '500'
                       }}
                     >
-                      � 決済リクエスト生成ツールへ
+                      🛒 決済リクエスト生成ツールへ
                     </a>
                     <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
                       決済リクエストを生成して、URLで支払者と共有できます

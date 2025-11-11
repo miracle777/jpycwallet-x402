@@ -362,47 +362,117 @@ const MerchantPaymentRequest: React.FC<MerchantPaymentRequestProps> = ({
             <span style={{ fontWeight: '600', fontSize: '16px' }}>決済用URL生成完了！</span>
           </div>
 
-          {/* URL表示とコピーボタン */}
+          {/* URL表示とコピー・新しいウィンドウで開く */}
           <div style={{ marginBottom: '15px' }}>
             <div style={{ fontSize: '12px', fontWeight: '500', color: '#15803d', marginBottom: '8px' }}>
               📱 決済用URL:
             </div>
+            
+            {/* URL表示エリア（スクロール可能） */}
+            <div style={{
+              backgroundColor: '#dcfce7',
+              border: '2px solid #10b981',
+              borderRadius: '6px',
+              padding: '12px',
+              marginBottom: '10px',
+              maxHeight: '100px',
+              overflowY: 'auto',
+              wordBreak: 'break-all',
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              lineHeight: '1.4',
+              color: '#15803d'
+            }}>
+              {paymentUrl}
+            </div>
+            
+            {/* アクションボタン */}
             <div style={{
               display: 'flex',
-              gap: '10px',
-              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
               marginBottom: '10px'
             }}>
-              <input
-                type="text"
-                value={paymentUrl}
-                readOnly
-                style={{ 
-                  flex: 1,
-                  padding: '8px', 
-                  border: '1px solid #10b981', 
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  backgroundColor: '#f0fdf4',
-                  boxSizing: 'border-box'
-                }}
-              />
               <button
                 onClick={() => copyToClipboard(paymentUrl)}
                 style={{
-                  padding: '8px 12px',
+                  padding: '10px 16px',
                   backgroundColor: '#15803d',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '6px',
                   cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  whiteSpace: 'nowrap'
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}
               >
-                {copied ? '✅ コピー済み' : '📋 コピー'}
+                {copied ? '✅ コピー済み' : '📋 URLをコピー'}
+              </button>
+              
+              <a
+                href={paymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  padding: '10px 16px',
+                  backgroundColor: '#0ea5e9',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  textDecoration: 'none',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                🔗 新しいウィンドウで開く
+              </a>
+              
+              <button
+                onClick={() => {
+                  // QRコード生成（簡易版）
+                  const qrData = `data:text/plain;charset=utf-8,${encodeURIComponent(paymentUrl)}`;
+                  const newWindow = window.open('', '_blank', 'width=400,height=500');
+                  if (newWindow) {
+                    newWindow.document.write(`
+                      <html>
+                        <head><title>QRコード - 決済用URL</title></head>
+                        <body style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
+                          <h2>📱 決済用QRコード</h2>
+                          <div style="margin: 20px 0;">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(paymentUrl)}" alt="QR Code" style="border: 1px solid #ddd; border-radius: 8px;" />
+                          </div>
+                          <p style="font-size: 12px; color: #666; margin-top: 20px; word-break: break-all;">
+                            URL: ${paymentUrl}
+                          </p>
+                          <button onclick="navigator.clipboard.writeText('${paymentUrl}').then(() => alert('URLがクリップボードにコピーされました'))" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            📋 URLをコピー
+                          </button>
+                        </body>
+                      </html>
+                    `);
+                  }
+                }}
+                style={{
+                  padding: '10px 16px',
+                  backgroundColor: '#8b5cf6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                � QRコード表示
               </button>
             </div>
           </div>
