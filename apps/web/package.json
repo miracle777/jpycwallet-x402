@@ -17,6 +17,8 @@
     "@web3-onboard/injected-wallets": "^2.11.3",
     "@web3-onboard/walletconnect": "^2.6.3",
     "ethers": "^6.15.0",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.553.0",
     "qr-scanner": "^1.4.2",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",

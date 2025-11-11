@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ethers } from "ethers";
 import { getOnboard, CHAINS, type ChainKey } from "./lib/onboard";
 import { readBalance } from "./lib/jpyc";
-import { addJPYCToWallet, getCurrentJPYCToken, NETWORK_INFO } from "./lib/wallet-utils";
+import { addTokenToWallet, NETWORK_INFO } from "./lib/wallet-utils";
 
 interface AmbireLoginProps {
   onConnect?: (address: string, signer: ethers.Signer) => void;
@@ -39,30 +39,45 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
   }
 
   async function addJPYCToken() {
+    const onboard = getOnboard();
+    const wallets = onboard.state.get().wallets;
+    if (wallets.length === 0) {
+      setErrMsg("ウォレットが接続されていません");
+      return;
+    }
+    
+    const wallet = wallets[0];
+    const chainId = parseInt(chain.id.toString());
+    const networkInfo = NETWORK_INFO[chainId];
+    const jpycTokenInfo = networkInfo?.jpycToken;
+    
+    if (!jpycTokenInfo) {
+      setErrMsg("このネットワークではJPYCは利用できません");
+      return;
+    }
+    
     try {
-      const onboard = getOnboard();
-      const wallets = onboard.state.get().wallets;
-      if (wallets.length > 0) {
-        const provider = wallets[0].provider;
-        const success = await addJPYCToWallet(provider);
-        if (success) {
-          setErrMsg("JPYCトークンがウォレットに追加されました！");
-          setShowTokenAdd(false);
-          // 残高を再取得
-          if (address) {
-            try {
-              const bal = await readBalance(address);
-              setTokenBalance(String(bal));
-            } catch (e) {
-              console.error("Balance refresh error:", e);
-            }
+      const provider = wallet.provider;
+      const success = await addTokenToWallet(provider, jpycTokenInfo);
+      
+      if (success) {
+        setErrMsg("✅ JPYCトークンがウォレットに追加されました！");
+        setShowTokenAdd(false);
+        // 残高を再取得
+        if (address) {
+          try {
+            const bal = await readBalance(address);
+            setTokenBalance(String(bal));
+          } catch (e) {
+            console.error("Balance refresh error:", e);
           }
-        } else {
-          setErrMsg("JPYCトークンの追加に失敗しました");
         }
+      } else {
+        setErrMsg("JPYCトークンの追加に失敗しました。ネットワークが正しく選択されているか確認してください。");
       }
     } catch (e: any) {
-      setErrMsg(`トークン追加エラー: ${e.message}`);
+      console.error("Token add error:", e);
+      setErrMsg(`❌ ${e.message || 'トークン追加中にエラーが発生しました'}`);
     }
   }
 
@@ -124,98 +139,75 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
     }
   }
 
-  const btn = {
-    base: {
-      padding: "0.9rem 1.4rem",
-      borderRadius: "12px",
-      fontSize: "1.05rem",
-      fontWeight: 600,
-      border: "1px solid #e5e7eb",
-      cursor: "pointer",
-      transition: "transform .02s ease",
-      width: "100%",
-      maxWidth: 340,
-      textAlign: "center" as const,
-      display: "flex",
-      gap: "10px",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    primary: { background: "#2563eb", color: "#fff" },
-    secondary: { background: "#111827", color: "#fff" },
-    wrap: {
-      display: "flex",
-      gap: "14px",
-      flexWrap: "wrap" as const,
-      alignItems: "center",
-      margin: "18px 0 8px",
-    },
-    icon: { fontSize: "1.2rem" },
-  };
-
   return (
-    <div style={{ margin: "2rem" }}>
-      <h2 style={{ marginBottom: 8 }}>Ambire Wallet Demo</h2>
+    <div className="card">
+      <h2 className="text-xl font-semibold mb-4">ウォレット接続</h2>
 
       {!address ? (
         <>
-          <p style={{ opacity: 0.8 }}>
-            接続方法を選んでください（Ambireは <b>WalletConnect</b>）。
+          <p className="text-gray-600 mb-4">
+            ウォレットを接続してください。Ambire Walletは <b>WalletConnect</b> を使用します。
           </p>
-          <div style={btn.wrap}>
+          <div className="wallet-connect-grid">
             <button
-              style={{ ...btn.base, ...btn.primary }}
+              className="btn btn-primary"
               onClick={() => connectBy("WalletConnect")}
               disabled={loading}
             >
-              <span style={btn.icon}>🔗</span> Connect Ambire (WalletConnect)
+              <span>🔗</span> Connect Ambire (WalletConnect)
             </button>
             <button
-              style={{ ...btn.base, ...btn.secondary }}
+              className="btn btn-secondary"
               onClick={() => connectBy("MetaMask")}
               disabled={loading}
             >
-              <span style={btn.icon}>🦊</span> Connect MetaMask
+              <span>🦊</span> Connect MetaMask
             </button>
           </div>
-          {loading && <p style={{ marginTop: 8 }}>Connecting...</p>}
+          {loading && <p className="mt-2 text-gray-500">Connecting...</p>}
         </>
       ) : (
-        <div style={{ lineHeight: 1.8 }}>
-          <div>
-            <strong>Network:</strong> {chain.label}
+        <div className="space-y-3">
+          <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+            <div className="flex items-center text-green-700">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span className="font-medium">ウォレット接続済み</span>
+            </div>
           </div>
-          <div>
-            <strong>Address:</strong> {address}
-          </div>
-          <div>
-            <strong>Native Balance:</strong> {nativeBalance} {chain.token}
-          </div>
-          <div>
-            <strong>{tokenSymbol} Balance:</strong> {tokenBalance ?? "—"}
+          
+          <div className="text-sm space-y-2">
+            <div>
+              <span className="text-gray-600">ネットワーク:</span>
+              <span className="font-medium ml-2">{chain.label}</span>
+            </div>
+            
+            <div>
+              <span className="text-gray-600">アドレス:</span>
+              <div className="font-mono text-xs break-all mt-1 p-2 bg-gray-50 rounded">
+                {address}
+              </div>
+            </div>
+            
+            {tokenBalance && !isNaN(Number(tokenBalance)) && Number(tokenBalance) > 0 && (
+              <div>
+                <span className="text-gray-600">JPYC残高:</span>
+                <span className="font-medium ml-2 text-green-600">
+                  {Number(tokenBalance).toLocaleString()} JPYC
+                </span>
+              </div>
+            )}
           </div>
           
           {/* JPYCトークン追加機能 */}
           {showTokenAdd && (
-            <div style={{ 
-              marginTop: '15px', 
-              padding: '10px', 
-              backgroundColor: '#fffbeb', 
-              border: '1px solid #f59e0b', 
-              borderRadius: '8px' 
-            }}>
-              <div style={{ fontSize: '14px', marginBottom: '10px' }}>
+            <div className="alert alert-warning">
+              <div className="text-sm mb-3">
                 💡 JPYCトークンが表示されない場合は、ウォレットに追加してください
               </div>
               <button
-                style={{
-                  ...btn.base,
-                  backgroundColor: '#f59e0b',
-                  color: '#fff',
-                  fontSize: '14px',
-                  padding: '8px 16px',
-                  marginRight: '10px',
-                }}
+                className="btn btn-secondary"
                 onClick={addJPYCToken}
               >
                 ➕ JPYCをウォレットに追加
@@ -225,32 +217,25 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
 
           {/* テストネット情報 */}
           {chain.id !== "0x89" && (
-            <div style={{
-              marginTop: '15px',
-              padding: '10px',
-              backgroundColor: '#eff6ff',
-              border: '1px solid #3b82f6',
-              borderRadius: '8px',
-              fontSize: '14px',
-            }}>
-              <div style={{ fontWeight: 600, marginBottom: '5px' }}>
+            <div className="alert alert-info">
+              <div className="font-semibold mb-2">
                 🧪 テストネットワーク情報
               </div>
-              <div>
+              <div className="text-sm">
                 このネットワークではテスト用JPYCを使用します。
               </div>
               {NETWORK_INFO[parseInt(chain.id, 16)]?.faucetInfo && (
-                <div style={{ marginTop: '8px' }}>
-                  <strong>💧 テストJPYC取得:</strong><br />
+                <div className="mt-2">
+                  <div className="font-medium text-sm">💧 テストJPYC取得:</div>
                   <a 
                     href={NETWORK_INFO[parseInt(chain.id, 16)].faucetInfo!.url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    style={{ color: '#2563eb' }}
+                    className="text-blue-600 underline text-sm"
                   >
                     Faucetで取得 →
                   </a>
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                  <div className="text-xs text-gray-500 mt-1">
                     {NETWORK_INFO[parseInt(chain.id, 16)].faucetInfo!.description}
                   </div>
                 </div>
@@ -258,9 +243,9 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
             </div>
           )}
 
-          <div style={{ marginTop: '15px' }}>
+          <div className="mt-4">
             <button
-              style={{ ...btn.base, backgroundColor: '#dc2626', color: '#fff' }}
+              className="btn btn-secondary w-full"
               onClick={disconnect}
             >
               🔌 切断
@@ -269,7 +254,15 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
         </div>
       )}
 
-      {errMsg && <p style={{ color: "crimson", marginTop: 12 }}>{errMsg}</p>}
+      {errMsg && (
+        <div className={`mt-4 p-3 rounded-lg text-sm ${
+          errMsg.startsWith('✅') 
+            ? 'bg-green-50 border border-green-200 text-green-700'
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          {errMsg}
+        </div>
+      )}
     </div>
   );
 };

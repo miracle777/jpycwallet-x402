@@ -1,0 +1,433 @@
+/* レスポンシブデザイン用グローバルスタイル */
+
+/* ベースリセットとユーティリティ */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8fafc;
+  color: #1f2937;
+  line-height: 1.6;
+}
+
+/* コンテナスタイル */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.responsive-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr;
+}
+
+/* レスポンシブブレイクポイント */
+
+/* タブレット以上 */
+@media (min-width: 768px) {
+  .container {
+    padding: 0 40px;
+  }
+  
+  .responsive-grid {
+    gap: 30px;
+  }
+  
+  .tablet-2-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .tablet-3-col {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* デスクトップ以上 */
+@media (min-width: 1024px) {
+  .responsive-grid {
+    gap: 40px;
+  }
+  
+  .desktop-2-col {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .desktop-3-col {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .desktop-4-col {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 大画面デスクトップ */
+@media (min-width: 1280px) {
+  .container {
+    padding: 0 60px;
+  }
+}
+
+/* カードスタイル */
+.card {
+  background-color: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* モバイル用のカード */
+@media (max-width: 767px) {
+  .card {
+    padding: 16px;
+    margin: 0 10px;
+  }
+}
+
+/* ボタンスタイル */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  min-height: 44px; /* タッチターゲットサイズ */
+  gap: 8px;
+}
+
+.btn-primary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #e5e7eb;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* モバイル用ボタン */
+@media (max-width: 767px) {
+  .btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 18px;
+  }
+}
+
+/* フォームスタイル */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 5px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* モバイルでの入力フィールド */
+@media (max-width: 767px) {
+  .form-input {
+    font-size: 16px; /* iOSのズーム防止 */
+    padding: 16px;
+  }
+}
+
+/* アラートスタイル */
+.alert {
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.alert-success {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
+
+.alert-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.alert-warning {
+  background-color: #fffbeb;
+  border: 1px solid #fed7aa;
+  color: #d97706;
+}
+
+.alert-info {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+}
+
+/* テーブルレスポンシブ */
+.table-responsive {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+.table th,
+.table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* モバイルでのテーブル */
+@media (max-width: 767px) {
+  .table th,
+  .table td {
+    padding: 8px;
+    font-size: 14px;
+  }
+}
+
+/* ナビゲーション */
+.nav-tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-tab {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: #6b7280;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.nav-tab:hover {
+  color: #374151;
+}
+
+.nav-tab.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+/* モバイルでのタブ */
+@media (max-width: 767px) {
+  .nav-tab {
+    padding: 16px 20px;
+    font-size: 16px;
+    min-width: 100px;
+  }
+}
+
+/* ユーティリティクラス */
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .hidden-mobile {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .hidden-desktop {
+    display: none;
+  }
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mb-6 {
+  margin-bottom: 24px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mt-6 {
+  margin-top: 24px;
+}
+
+/* スピナー/ローディング */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f4f6;
+  border-radius: 50%;
+  border-top: 2px solid #3b82f6;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* QRコードレスポンシブ */
+.qr-code-container {
+  text-align: center;
+  padding: 20px;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.qr-code-container img {
+  max-width: 100%;
+  height: auto;
+  max-height: 350px;
+  min-height: 280px;
+}
+
+/* モバイルでのQRコード */
+@media (max-width: 767px) {
+  .qr-code-container img {
+    max-height: 250px;
+  }
+}
+
+/* ウォレット接続ボタン特別スタイル */
+.wallet-connect-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .wallet-connect-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* エラーメッセージのレスポンシブ */
+.error-message {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 16px;
+  color: #dc2626;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+@media (max-width: 767px) {
+  .error-message {
+    font-size: 13px;
+    padding: 12px;
+  }
+}
+
+/* 成功メッセージのレスポンシブ */
+.success-message {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 16px;
+  color: #15803d;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+@media (max-width: 767px) {
+  .success-message {
+    font-size: 13px;
+    padding: 12px;
+  }
+}

@@ -134,9 +134,14 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
 
   return (
     <div style={styles.container}>
-      <h3 style={styles.title}>
-        💧 テスト用JPYC取得ガイド
-      </h3>
+            <div style={styles.title}>
+        💧 テスト用トークン取得（Faucet）
+        {chainId === 11155111 && (
+          <span style={{ fontSize: '14px', backgroundColor: '#10b981', color: 'white', padding: '4px 8px', borderRadius: '4px', marginLeft: '10px' }}>
+            🌟 推奨: Sepolia
+          </span>
+        )}
+      </div>
 
       {isCurrentNetworkTestnet() && (
         <div style={styles.warning}>

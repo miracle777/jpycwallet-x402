@@ -54,7 +54,14 @@ export interface UserSubscription {
   startDate: number;    // タイムスタンプ
   endDate: number;      // タイムスタンプ
   txHash: string;       // 支払いトランザクション
-  status: 'active' | 'expired' | 'cancelled';
+  status: 'active' | 'expired' | 'cancelled' | 'paused';
+  // 拡張フィールド（カスタム契約用）
+  merchantName?: string;
+  merchantId?: string;
+  amount?: string;
+  interval?: 'daily' | 'weekly' | 'monthly';
+  description?: string;
+  nextPaymentDate?: string;
 }
 
 // ローカルストレージでのサブスクリプション管理（実際はバックエンドで管理）
