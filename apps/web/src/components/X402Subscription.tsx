@@ -245,7 +245,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
       const currentNetwork = await signer.provider?.getNetwork();
       console.log('Current network:', currentNetwork);
       
-      if (currentNetwork?.chainId !== 137n) { // 137 is Polygon mainnet
+      if (BigInt(currentNetwork?.chainId || 0) !== 137n) { // 137 is Polygon mainnet
         setError('Polygonネットワークに接続してください。現在のネットワークでは決済できません。');
         setLoading(false);
         return;

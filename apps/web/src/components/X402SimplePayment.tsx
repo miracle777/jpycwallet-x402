@@ -233,7 +233,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       const currentNetwork = await signer.provider?.getNetwork();
       console.log('Current network:', currentNetwork);
       
-      if (currentNetwork?.chainId !== currentConfig.chainId) {
+      if (BigInt(currentNetwork?.chainId || 0) !== currentConfig.chainId) {
         setError(`${currentConfig.name}ネットワークに接続してください。現在のネットワークでは決済できません。`);
         setLoading(false);
         return;
