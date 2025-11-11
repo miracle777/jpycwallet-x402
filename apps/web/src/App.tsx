@@ -116,7 +116,7 @@ function App() {
             /* 接続済み: レスポンシブレイアウト */
             <div className="responsive-grid desktop-2-col">
               {/* 左カラム: 設定・操作エリア（PCでは左、モバイルでは上） */}
-              <div className="space-y-6">
+              <div className="space-y-6" style={{ maxWidth: '400px' }}> {/* 固定幅と一致 */}
                 {/* ウォレット情報 */}
                 <div className="card">
                   <h2 className="text-xl font-semibold mb-4">ウォレット接続</h2>

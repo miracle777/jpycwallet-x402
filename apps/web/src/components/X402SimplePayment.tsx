@@ -96,7 +96,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   // ネットワーク変更時に適切なデフォルト金額を設定
   React.useEffect(() => {
     if (selectedNetwork === 'sepolia') {
-      setAmount('1000000000000000'); // 0.001 ETH in wei
+      setAmount('100000000000000000'); // 0.1 ETH in wei (より大きな金額)
     } else {
       setAmount('1000000'); // 1 JPYC in base units
     }
@@ -270,7 +270,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       console.log(`🎉 ${currentConfig.currency} transfer完了:`, receipt?.hash);
 
       const displayAmount = selectedNetwork === 'sepolia' 
-        ? (parseFloat(amount) / Math.pow(10, currentConfig.decimals)).toFixed(6)
+        ? (parseFloat(amount) / Math.pow(10, currentConfig.decimals)).toFixed(4)
         : (parseFloat(amount) / 1000000).toFixed(0);
 
       setSuccess(
@@ -309,7 +309,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
   const resetForm = () => {
     // ネットワークに応じたデフォルト金額を設定
-    const defaultAmount = selectedNetwork === 'sepolia' ? '1000000000000000' : '1000000';
+    const defaultAmount = selectedNetwork === 'sepolia' ? '100000000000000000' : '1000000';
     setAmount(defaultAmount);
     setRecipient(currentAddress || '');
     setDescription('x402 Simple Payment Test');
@@ -435,7 +435,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                   borderRadius: '6px',
                   fontSize: '14px'
                 }}
-                placeholder={selectedNetwork === 'sepolia' ? '1000000000000000' : '1000000'}
+                placeholder={selectedNetwork === 'sepolia' ? '100000000000000000' : '1000000'}
                 min="0"
               />
               <div style={{ 
@@ -447,7 +447,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                 color: '#6b7280' 
               }}>
                 ≈ {selectedNetwork === 'sepolia' 
-                  ? (parseFloat(amount || '0') / Math.pow(10, currentConfig.decimals)).toFixed(6)
+                  ? (parseFloat(amount || '0') / Math.pow(10, currentConfig.decimals)).toFixed(4)
                   : (parseFloat(amount || '0') / 1000000).toFixed(0)
                 } {currentConfig.currency}
               </div>

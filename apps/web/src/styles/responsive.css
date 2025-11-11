@@ -47,6 +47,11 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
   
+  /* タブレットでも左右分割してQRコードスペースを確保 */
+  .desktop-2-col {
+    grid-template-columns: 1fr 1.5fr; /* タブレットでは1:1.5の比率 */
+  }
+  
   .tablet-3-col {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -59,7 +64,7 @@ body {
   }
   
   .desktop-2-col {
-    grid-template-columns: 2fr 3fr; /* 左40% 右60% でQRコードエリアを広く */
+    grid-template-columns: 400px 1fr; /* 左側を固定幅、右側は残り全て */
   }
   
   .desktop-3-col {
@@ -359,8 +364,8 @@ body {
 /* QRコードレスポンシブ */
 .qr-code-container {
   text-align: center;
-  padding: 20px;
-  min-height: 500px; /* より高く設定 */
+  padding: 30px; /* パディングを増加 */
+  min-height: 600px; /* さらに高く設定 */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -369,8 +374,8 @@ body {
 .qr-code-container img {
   max-width: 100%;
   height: auto;
-  max-height: 450px; /* QRコードをより大きく */
-  min-height: 350px;
+  max-height: 500px; /* QRコードをさらに大きく */
+  min-height: 400px; /* 最小サイズも増加 */
 }
 
 /* モバイルでのQRコード */
