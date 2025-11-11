@@ -63,8 +63,25 @@ export function getOnboard() {
       icon: "<svg/>",
       recommendedInjectedWallets: [{ name: "MetaMask", url: "https://metamask.io" }],
     },
-    // 任意（UIを出さない設定）
-    accountCenter: { desktop: { enabled: false }, mobile: { enabled: false } },
+    // ✅ モーダル表示を有効にする
+    accountCenter: { 
+      desktop: { 
+        enabled: false,
+        containerElement: 'body'
+      }, 
+      mobile: { 
+        enabled: false,
+        containerElement: 'body'
+      } 
+    },
+    // ✅ WalletConnect モーダル設定
+    connect: {
+      autoConnectAllPreviousWallet: false,
+      showSidebar: true,
+      disableClose: false,
+      removeWhereIsMyWalletWarning: false,
+      disableUDResolution: false
+    }
   });
 
   return onboardInstance;

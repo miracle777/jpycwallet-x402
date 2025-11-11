@@ -18,6 +18,7 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [showTokenAdd, setShowTokenAdd] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number | null>(null); // 実際に接続しているネットワーク
+  const [connectionStep, setConnectionStep] = useState<string>('');
 
   const defaultChainKey =
     (import.meta.env.VITE_DEFAULT_CHAIN as ChainKey) || "polygon-amoy";
@@ -36,7 +37,101 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
     setTokenBalance(null);
     setErrMsg(null);
     setShowTokenAdd(false);
+    setConnectionStep('');
     onDisconnect?.();
+  }
+
+  // 手動でウォレット選択モーダルを表示する関数
+  async function showWalletModal() {
+    setLoading(true);
+    setErrMsg(null);
+    setConnectionStep('ウォレット選択画面を表示しています...');
+    
+    try {
+      const onboard = getOnboard();
+      console.log('Showing wallet selection modal...');
+      
+      // モーダルを強制表示
+      const connected = await onboard.connectWallet();
+      
+      if (!connected.length) {
+        throw new Error('ウォレット接続がキャンセルされました');
+      }
+
+      // 接続成功後の処理（connectBy関数と同じ）
+      const walletState = onboard.state.get().wallets;
+      if (!walletState.length) {
+        throw new Error('ウォレット状態の取得に失敗しました');
+      }
+
+      console.log('Wallet connected successfully via modal:', walletState[0].label);
+      setConnectionStep(`✅ ${walletState[0].label} に接続しました！`);
+
+      // EIP-1193 -> ethers v6 Provider
+      const providerObj = onboard.state.get().wallets[0].provider as any;
+      const provider = rpcUrlEnv
+        ? new ethers.JsonRpcProvider(rpcUrlEnv)
+        : new ethers.BrowserProvider(providerObj);
+        
+      setConnectionStep("アカウント情報を取得中...");
+      const signer = await provider.getSigner();
+
+      const addr = await signer.getAddress();
+      setAddress(addr);
+
+      // 実際に接続しているネットワークのチェーンIDを取得
+      try {
+        setConnectionStep("ネットワーク情報を取得中...");
+        const network = await provider.getNetwork();
+        setCurrentChainId(Number(network.chainId));
+        console.log('Connected to network:', network.chainId, network.name);
+      } catch (e) {
+        console.error('Failed to get network:', e);
+      }
+
+      setConnectionStep("残高を取得中...");
+      const wei = await provider.getBalance(addr);
+      setNativeBalance(ethers.formatEther(wei));
+
+      // jpyc.tsのreadBalance関数を使用して残高を取得
+      try {
+        setConnectionStep("JPYC残高を取得中...");
+        const bal = await readBalance(addr);
+        setTokenBalance(String(bal));
+        setTokenSymbol("JPYC");
+        
+        // 残高が0の場合、トークン追加オプションを表示
+        if (bal === 0) {
+          setShowTokenAdd(true);
+        }
+      } catch (e) {
+        console.error("JPYC balance read error:", e);
+        setTokenBalance(null);
+        setShowTokenAdd(true); // エラーの場合もトークン追加オプションを表示
+      }
+
+      setConnectionStep("接続完了！");
+      
+      // App.tsxのコールバックを呼び出し
+      onConnect?.(addr, signer);
+      setErrMsg(null); // 成功時はエラーメッセージをクリア
+      
+    } catch (e: any) {
+      console.error('Manual wallet connection error:', e);
+      
+      let errorMessage = e?.message || "ウォレット接続エラー";
+      
+      if (errorMessage.includes('User rejected') || errorMessage.includes('user rejected')) {
+        errorMessage = "ユーザーによってキャンセルされました";
+      } else if (errorMessage.includes('Modal closed') || errorMessage.includes('modal closed')) {
+        errorMessage = "接続画面が閉じられました。再度お試しください。";
+      }
+      
+      setErrMsg(errorMessage);
+    } finally {
+      setLoading(false);
+      setConnectionStep('');
+    }
   }
 
   async function addJPYCToken() {
@@ -85,28 +180,65 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
   async function connectBy(label: "MetaMask" | "WalletConnect") {
     setLoading(true);
     setErrMsg(null);
+    setConnectionStep('接続を開始しています...');
+    
     try {
       const onboard = getOnboard();
-
-      // 指定ウォレットを自動選択（モーダルを出さない）
-      const connected = await onboard.connectWallet({
-        autoSelect: { label, disableModals: true },
-      });
-
-      // 失敗したら通常モーダルでフォールバック
-      if (!connected.length) {
-        const fallback = await onboard.connectWallet();
-        if (!fallback.length) return;
+      console.log(`Attempting to connect with ${label}...`);
+      
+      if (label === "WalletConnect") {
+        console.log('WalletConnect project ID:', import.meta.env.VITE_WALLETCONNECT_PROJECT_ID);
+        setConnectionStep("WalletConnect接続画面を表示しています...");
+        
+        // ✅ WalletConnectの場合は必ずモーダルを表示
+        const connected = await onboard.connectWallet();
+        
+        if (!connected.length) {
+          throw new Error('ウォレット接続がキャンセルされました');
+        }
+        
+        // WalletConnectが選択されているか確認
+        const wallet = connected[0];
+        if (!wallet.label.toLowerCase().includes('walletconnect') && !wallet.label.toLowerCase().includes('wallet connect')) {
+          console.log('非WalletConnectウォレットが選択されました:', wallet.label);
+          // 継続して処理
+        }
+        
+      } else {
+        setConnectionStep("MetaMask接続画面を表示しています...");
+        
+        // ✅ MetaMaskの場合は自動選択を試行、失敗時にモーダル表示
+        let connected = await onboard.connectWallet({
+          autoSelect: { label: "MetaMask", disableModals: true },
+        });
+        
+        if (!connected.length) {
+          console.log('MetaMask auto-connect failed, showing modal...');
+          setConnectionStep("ウォレット選択画面を表示しています...");
+          connected = await onboard.connectWallet();
+        }
+        
+        if (!connected.length) {
+          throw new Error('ウォレット接続がキャンセルされました');
+        }
       }
 
-      // ⚠️ 自動ネットワーク切り替えを廃止（ユーザーが自由に選択可能に）
-      // await onboard.setChain({ chainId: chain.id });
+      // 接続成功後の処理
+      const walletState = onboard.state.get().wallets;
+      if (!walletState.length) {
+        throw new Error('ウォレット状態の取得に失敗しました');
+      }
+
+      console.log('Wallet connected successfully:', walletState[0].label);
+      setConnectionStep(`✅ ${walletState[0].label} に接続しました！`);
 
       // EIP-1193 -> ethers v6 Provider
       const providerObj = onboard.state.get().wallets[0].provider as any;
       const provider = rpcUrlEnv
         ? new ethers.JsonRpcProvider(rpcUrlEnv)
         : new ethers.BrowserProvider(providerObj);
+        
+      setConnectionStep("アカウント情報を取得中...");
       const signer = await provider.getSigner();
 
       const addr = await signer.getAddress();
@@ -114,6 +246,7 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
 
       // 実際に接続しているネットワークのチェーンIDを取得
       try {
+        setConnectionStep("ネットワーク情報を取得中...");
         const network = await provider.getNetwork();
         setCurrentChainId(Number(network.chainId));
         console.log('Connected to network:', network.chainId, network.name);
@@ -121,11 +254,13 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
         console.error('Failed to get network:', e);
       }
 
+      setConnectionStep("残高を取得中...");
       const wei = await provider.getBalance(addr);
       setNativeBalance(ethers.formatEther(wei));
 
       // jpyc.tsのreadBalance関数を使用して残高を取得
       try {
+        setConnectionStep("JPYC残高を取得中...");
         const bal = await readBalance(addr);
         setTokenBalance(String(bal));
         setTokenSymbol("JPYC");
@@ -140,14 +275,40 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
         setShowTokenAdd(true); // エラーの場合もトークン追加オプションを表示
       }
 
+      setConnectionStep("接続完了！");
+      
       // App.tsxのコールバックを呼び出し
       onConnect?.(addr, signer);
+      setErrMsg(null); // 成功時はエラーメッセージをクリア
+      
     } catch (e: any) {
-      console.error(e);
-      setErrMsg(e?.message || "Wallet connect error");
+      console.error('Wallet connection error:', e);
+      
+      let errorMessage = e?.message || "ウォレット接続エラー";
+      
+      // エラーの種類に応じてメッセージを調整
+      if (errorMessage.includes('User rejected') || errorMessage.includes('user rejected')) {
+        errorMessage = "ユーザーによってキャンセルされました";
+      } else if (errorMessage.includes('Modal closed') || errorMessage.includes('modal closed')) {
+        errorMessage = "接続画面が閉じられました。再度お試しください。";
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('タイムアウト')) {
+        errorMessage = "接続がタイムアウトしました。ウォレットアプリを開いて再度お試しください。";
+      } else if (errorMessage.includes('WalletConnect')) {
+        errorMessage = "WalletConnect接続エラー: " + errorMessage + "\n\n💡 対処法:\n1. ウォレットアプリを開く\n2. QRコードをスキャン\n3. 接続を承認";
+      }
+      
+      setErrMsg(errorMessage);
     } finally {
       setLoading(false);
+      setConnectionStep('');
     }
+  }
+
+  // 接続をキャンセルする関数
+  function cancelConnection() {
+    setLoading(false);
+    setErrMsg(null);
+    setConnectionStep('');
   }
 
   return (
@@ -175,7 +336,86 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
               <span>🦊</span> Connect MetaMask
             </button>
           </div>
-          {loading && <p className="mt-2 text-gray-500">Connecting...</p>}
+          
+          {/* 手動ウォレット選択ボタン */}
+          <div className="mt-4">
+            <button
+              onClick={showWalletModal}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '0.6em 1.2em',
+                border: '2px solid #6b7280',
+                borderRadius: '8px',
+                backgroundColor: 'transparent',
+                color: '#6b7280',
+                fontSize: '1em',
+                fontWeight: '500',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.5 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#6b7280';
+                  e.currentTarget.style.color = 'white';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#6b7280';
+                }
+              }}
+            >
+              <span>📋</span> すべてのウォレットから選択
+            </button>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              上記のボタンで接続できない場合は、こちらをクリック
+            </p>
+          </div>
+          
+          {/* 接続中の表示 */}
+          {loading && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <span className="text-blue-800 font-medium">接続中...</span>
+                  </div>
+                  {connectionStep && (
+                    <p className="mt-2 text-sm text-blue-600">{connectionStep}</p>
+                  )}
+                </div>
+                <button
+                  onClick={cancelConnection}
+                  className="ml-4 px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                >
+                  キャンセル
+                </button>
+              </div>
+              
+              {/* WalletConnect使用時の追加説明 */}
+              {connectionStep.includes('WalletConnect') && (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium mb-1">📱 WalletConnect接続手順:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-xs">
+                      <li>ウォレットアプリ（Ambire、Trust Wallet等）を開く</li>
+                      <li>「WalletConnect」または「接続」ボタンをタップ</li>
+                      <li>QRコードをスキャンまたはリンクをタップ</li>
+                      <li>接続を承認</li>
+                    </ol>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       ) : (
           <div className="space-y-3">
