@@ -1,3 +1,8 @@
+/* TailwindCSS base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* レスポンシブデザインのインポート */
 @import url('./styles/responsive.css');
 
