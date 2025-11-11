@@ -17,6 +17,7 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
   const [loading, setLoading] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [showTokenAdd, setShowTokenAdd] = useState(false);
+  const [currentChainId, setCurrentChainId] = useState<number | null>(null); // 実際に接続しているネットワーク
 
   const defaultChainKey =
     (import.meta.env.VITE_DEFAULT_CHAIN as ChainKey) || "polygon-amoy";
@@ -111,6 +112,15 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
       const addr = await signer.getAddress();
       setAddress(addr);
 
+      // 実際に接続しているネットワークのチェーンIDを取得
+      try {
+        const network = await provider.getNetwork();
+        setCurrentChainId(Number(network.chainId));
+        console.log('Connected to network:', network.chainId, network.name);
+      } catch (e) {
+        console.error('Failed to get network:', e);
+      }
+
       const wei = await provider.getBalance(addr);
       setNativeBalance(ethers.formatEther(wei));
 
@@ -168,7 +178,7 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
           {loading && <p className="mt-2 text-gray-500">Connecting...</p>}
         </>
       ) : (
-        <div className="space-y-3">
+          <div className="space-y-3">
           <div className="bg-green-50 p-3 rounded-lg border border-green-200">
             <div className="flex items-center text-green-700">
               <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -180,11 +190,16 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
           
           <div className="text-sm space-y-2">
             <div>
-              <span className="text-gray-600">ネットワーク:</span>
-              <span className="font-medium ml-2">{chain.label}</span>
-            </div>
-            
-            <div>
+              <span className="text-gray-600">🔗 接続ネットワーク:</span>
+              <span className="font-medium ml-2">
+                {currentChainId === 11155111 ? 'Ethereum Sepolia' :
+                 currentChainId === 1 ? 'Ethereum Mainnet' :
+                 currentChainId === 137 ? 'Polygon Mainnet' :
+                 currentChainId === 80002 ? 'Polygon Amoy' :
+                 currentChainId === 43113 ? 'Avalanche Fuji' :
+                 currentChainId ? `ChainID: ${currentChainId}` : 'Unknown'}
+              </span>
+            </div>            <div>
               <span className="text-gray-600">アドレス:</span>
               <div className="font-mono text-xs break-all mt-1 p-2 bg-gray-50 rounded">
                 {address}

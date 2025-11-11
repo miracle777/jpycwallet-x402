@@ -120,13 +120,15 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
   // 金額変更時に base units に変換
   const handleAmountChange = (value: string) => {
-    setAmount(value);
-    // ユーザー入力（JPYC数量）をbase unitsに変換
+    // 整数のみを受け付ける
+    const intValue = Math.floor(parseFloat(value) || 0);
+    setAmount(intValue.toString());
+    
     // 1 JPYC = 1,000,000 base units
-    if (value && !isNaN(parseFloat(value))) {
-      const baseUnits = Math.floor(parseFloat(value) * 1000000).toString();
+    if (intValue > 0) {
+      const baseUnits = (intValue * 1000000).toString();
       setAmountInBaseUnits(baseUnits);
-      console.log(`金額変更: ${value} JPYC → ${baseUnits} base units`);
+      console.log(`金額変更: ${intValue}円 → ${baseUnits} base units`);
     }
   };
 
@@ -308,11 +310,22 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         });
         receipt = await tx.wait();
       } else {
-        // Polygon JPYC transfer
+        // JPYC transfer（Polygon Amoy など）
         const jpycContract = getErc20Contract(signer);
         const decimals = await jpycContract.decimals();
-        const transferAmount = ethers.parseUnits((parseFloat(amount) / 1000000).toString(), decimals);
-        console.log(`Transferring ${(parseFloat(amount) / 1000000)} JPYC to ${recipient}`);
+        console.log(`📊 Decimals: ${decimals}, Amount in base units: ${amountInBaseUnits}`);
+        
+        // base units をそのまま使用（既に正しく計算されている）
+        const transferAmount = BigInt(amountInBaseUnits);
+        console.log(`Transferring ${amountInBaseUnits} base units (${parseFloat(amountInBaseUnits) / 1000000} JPYC) to ${recipient}`);
+        
+        // 事前チェック: 残高確認
+        const balance = await jpycContract.balanceOf(currentAddress);
+        console.log(`💰 Current balance: ${balance.toString()}, Transfer amount: ${transferAmount.toString()}`);
+        if (balance < transferAmount) {
+          throw new Error(`残高不足です。必要: ${transferAmount}, 保有: ${balance}`);
+        }
+        
         const tx = await jpycContract.transfer(recipient, transferAmount);
         receipt = await tx.wait();
       }
@@ -472,7 +485,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-              金額 (JPYC / 円)
+              金額 (JPYC / 円) - 整数のみ
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -487,8 +500,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                   fontSize: '14px'
                 }}
                 placeholder="1"
-                min="0"
-                step="0.1"
+                min="1"
+                step="1"
               />
               <div style={{ 
                 position: 'absolute', 
@@ -498,7 +511,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                 fontSize: '12px', 
                 color: '#6b7280' 
               }}>
-                {amount ? `${parseFloat(amount).toFixed(2)} JPYC` : '0 JPYC'}
+                {amount ? `${Math.floor(parseFloat(amount))} 円` : '0 円'}
               </div>
             </div>
             <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
