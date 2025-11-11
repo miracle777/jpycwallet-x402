@@ -28,7 +28,7 @@ const X402SubscriptionShop: React.FC<X402SubscriptionShopProps> = ({
   signer,
   onPaymentComplete
 }) => {
-  const [subscriptionPlans] = useState<SubscriptionPlan[]>([
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([
     {
       id: 'basic',
       name: 'ベーシックプラン',
@@ -63,8 +63,30 @@ const X402SubscriptionShop: React.FC<X402SubscriptionShopProps> = ({
   useEffect(() => {
     if (currentAddress) {
       loadUserSubscriptions();
+      loadAvailablePlans();
     }
   }, [currentAddress]);
+
+  const loadAvailablePlans = () => {
+    try {
+      const saved = localStorage.getItem('merchant_subscription_plans');
+      if (saved) {
+        const plans = JSON.parse(saved);
+        // Convert stored plans to component format
+        const convertedPlans = plans.map((plan: any) => ({
+          id: plan.id,
+          name: plan.name,
+          price: (parseFloat(plan.amount) / 1000000).toFixed(0), // Convert wei to JPYC
+          duration: plan.duration,
+          description: plan.description,
+          features: plan.features || []
+        }));
+        setSubscriptionPlans(convertedPlans);
+      }
+    } catch (e) {
+      console.error('Failed to load plans:', e);
+    }
+  };
 
   const loadUserSubscriptions = () => {
     // ローカルストレージから既存のサブスクリプション情報を読み込み

@@ -8,6 +8,8 @@ import SepoliaGasless from "./components/SepoliaGasless";
 import NetworkSelector from "./components/NetworkSelector";
 import FaucetGuide from "./components/FaucetGuide";
 import QRCodeDisplay from "./components/QRCodeDisplay";
+import X402SubscriptionTestPage from "./components/X402SubscriptionTestPage";
+import SubscriptionMerchantDashboard from "./components/SubscriptionMerchantDashboard";
 import MerchantPaymentRequest from "./components/MerchantPaymentRequest";
 import PaymentRequestSimple from "./components/PaymentRequestSimple";
 import type { ChainKey } from "./lib/onboard";
@@ -21,8 +23,8 @@ function App() {
   const [selectedNetwork, setSelectedNetwork] = useState<ChainKey>('sepolia');
   const [activeTab, setActiveTab] = useState<'payment' | 'x402-simple' | 'x402-subscription' | 'x402-subscription-shop' | 'sepolia-gasless'>('x402-simple');
   
-  // ページ管理: 'main' | 'merchant' | 'pay'
-  const [currentPage, setCurrentPage] = useState<'main' | 'merchant' | 'pay'>('main');
+  // ページ管理: 'main' | 'merchant' | 'pay' | 'subscription-test' | 'subscription-merchant'
+  const [currentPage, setCurrentPage] = useState<'main' | 'merchant' | 'pay' | 'subscription-test' | 'subscription-merchant'>('main');
   const [paymentRequest, setPaymentRequest] = useState<string>('');
 
   // URLパラメータをチェック
@@ -39,7 +41,16 @@ function App() {
       const request = params.get('request') || '';
       setPaymentRequest(request);
       setCurrentPage('pay');
-    } else {
+    }
+    // サブスクリプションテストページ
+    else if (params.get('page') === 'subscription-test') {
+      setCurrentPage('subscription-test');
+    }
+    // サブスクリプション管理ページ
+    else if (params.get('page') === 'subscription-merchant') {
+      setCurrentPage('subscription-merchant');
+    }
+    else {
       setCurrentPage('main');
     }
   }, []);
@@ -84,6 +95,58 @@ function App() {
   };
 
   // ページ別レンダリング
+  if (currentPage === 'subscription-test') {
+    return <X402SubscriptionTestPage />;
+  }
+
+  if (currentPage === 'subscription-merchant') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="w-full px-4 py-8">
+          {/* ヘッダー */}
+          <div className="max-w-7xl mx-auto text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">🏪 Subscription Merchant Dashboard</h1>
+            <p className="text-gray-600">x402サブスクリプション管理画面</p>
+          </div>
+
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <AmbireLogin 
+                onConnect={handleWalletConnect} 
+                onDisconnect={handleWalletDisconnect}
+              />
+              
+              <div className="mt-6">
+                <SubscriptionMerchantDashboard
+                  currentAddress={walletData.address || undefined}
+                  signer={walletData.signer || undefined}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="text-center mt-8">
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a 
+                href="/?page=main"
+                className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                ← メインページに戻る
+              </a>
+              <a 
+                href="/?page=subscription-test"
+                className="inline-block px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                🛒 テストページ
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (currentPage === 'merchant') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -347,9 +410,25 @@ function App() {
                   <div className="bg-white rounded-lg shadow-md p-6 text-center">
                     <h2 className="text-xl font-semibold mb-4">🎯 テスト項目</h2>
                     <div className="space-y-4">
-                      <p>� <strong>x402決済テスト</strong><br/>単発決済の動作確認</p>
+                      <p>💳 <strong>x402決済テスト</strong><br/>単発決済の動作確認</p>
                       <p>🔄 <strong>x402サブスク管理</strong><br/>サブスクリプション設定・管理</p>
                       <p>🛍️ <strong>サブスク申し込み</strong><br/>ユーザー向け申し込みページ</p>
+                    </div>
+                    
+                    {/* 新しいテストページへのリンク */}
+                    <div className="mt-6 space-y-3">
+                      <a 
+                        href="/?page=subscription-test"
+                        className="block w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-center"
+                      >
+                        🧪 サブスクリプション専用テストページ
+                      </a>
+                      <a 
+                        href="/?page=subscription-merchant"
+                        className="block w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-center"
+                      >
+                        🏪 マーチャント管理画面
+                      </a>
                     </div>
                   </div>
                 ) : (
