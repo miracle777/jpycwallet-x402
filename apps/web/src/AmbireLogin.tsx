@@ -98,7 +98,8 @@ const AmbireLogin: React.FC<AmbireLoginProps> = ({ onConnect, onDisconnect }) =>
         if (!fallback.length) return;
       }
 
-      await onboard.setChain({ chainId: chain.id });
+      // ⚠️ 自動ネットワーク切り替えを廃止（ユーザーが自由に選択可能に）
+      // await onboard.setChain({ chainId: chain.id });
 
       // EIP-1193 -> ethers v6 Provider
       const providerObj = onboard.state.get().wallets[0].provider as any;

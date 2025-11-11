@@ -114,9 +114,9 @@ function App() {
             </div>
           ) : (
             /* 接続済み: 2カラムレイアウト */
-            <div className="w-full" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', minHeight: '100vh' }}>
+            <div style={{ display: 'flex', gap: '24px', width: '100%' }}>
               {/* 左カラム: 設定・操作エリア（2/3幅） */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: '0' }}>
                 {/* ウォレット情報 */}
                 <div className="bg-white rounded-lg shadow-md p-6">{/* Tailwindスタイル */}
                   <h2 className="text-xl font-semibold mb-4">ウォレット接続</h2>
@@ -244,8 +244,8 @@ function App() {
                 </div>
               </div>
 
-              {/* 右カラム: QRコード表示エリア */}
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* 右カラム: QRコード表示エリア（1/3幅） */}
+              <div style={{ flex: '1', display: 'flex', flexDirection: 'column', minWidth: '250px' }}>
                 <div className="sticky top-8">{/* 適度なトップスペース */}
                   {qrCodeData ? (
                     <div className="qr-code-container"> {/* 専用コンテナクラス追加 */}
