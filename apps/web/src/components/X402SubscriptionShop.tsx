@@ -72,11 +72,30 @@ const X402SubscriptionShop: React.FC<X402SubscriptionShopProps> = ({
       const saved = localStorage.getItem('merchant_subscription_plans');
       if (saved) {
         const plans = JSON.parse(saved);
+        // Helper function to safely convert amount to JPYC
+        const convertAmountToJPYC = (amountStr: string): number => {
+          const amount = parseFloat(amountStr);
+          if (isNaN(amount)) return 0;
+          
+          // If amount is very large (like 10^18), it's likely in 18-decimal wei format
+          if (amount > 1000000000000) {
+            return amount / 1e18; // 18 decimal places
+          }
+          // If amount is medium size (like 10^6), it's likely in 6-decimal format  
+          else if (amount > 1000000) {
+            return amount / 1e6; // 6 decimal places
+          }
+          // If amount is small, it's likely already in JPYC format
+          else {
+            return amount;
+          }
+        };
+
         // Convert stored plans to component format
         const convertedPlans = plans.map((plan: any) => ({
           id: plan.id,
           name: plan.name,
-          price: (parseFloat(plan.amount) / 1000000).toFixed(0), // Convert wei to JPYC
+          price: convertAmountToJPYC(plan.amount).toFixed(0), // Convert to JPYC safely
           duration: plan.duration,
           description: plan.description,
           features: plan.features || []

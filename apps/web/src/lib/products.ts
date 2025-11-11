@@ -43,4 +43,4 @@ export const sampleProducts: Product[] = [
   },
 ];
 
-export const merchantAddress = '0x742d35Cc7a8B82b8D2B9bD7a1B5C9e8F1D0A2C3B'; // サンプル受取アドレス
+export const merchantAddress = '0x742D35CC7A8B82B8D2b9bD7a1B5c9e8f1d0a2c3b'; // サンプル受取アドレス（正しいチェックサム形式）

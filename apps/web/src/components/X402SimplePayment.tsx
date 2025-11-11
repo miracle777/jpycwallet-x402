@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
-import { getErc20Contract } from '../lib/jpyc';
+import { getErc20Contract, JPYC_CONTRACTS, getProvider } from '../lib/jpyc';
 import { jpycAddress } from '../lib/chain';
 
 interface X402SimplePaymentProps {
@@ -61,7 +61,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   initialRequest,
 }) => {
   const [amount, setAmount] = useState('1'); // デフォルト: 1 JPYC（表示用）
-  const [amountInBaseUnits, setAmountInBaseUnits] = useState('1000000'); // 内部用: base units
+  const [amountInBaseUnits, setAmountInBaseUnits] = useState('1000000000000000000'); // 内部用: wei (18 decimal default)
   const [recipient, setRecipient] = useState('');
   const [description, setDescription] = useState('x402 Simple Payment Test');
   const [selectedNetwork, setSelectedNetwork] = useState<'polygon-amoy' | 'sepolia' | 'sepolia-official' | 'avalanche-fuji'>('sepolia');
@@ -135,6 +135,24 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
   const currentConfig = getCurrentNetworkConfig();
 
+  // Helper functions for dynamic JPYC contract handling
+  const getCurrentJPYCContract = () => {
+    // Default to sepolia-community, but could be made dynamic based on network
+    return 'sepolia-community' as keyof typeof JPYC_CONTRACTS;
+  };
+
+  const getContractDecimals = async (contractKey: keyof typeof JPYC_CONTRACTS) => {
+    try {
+      const contract = JPYC_CONTRACTS[contractKey];
+      const provider = getProvider(contract.network as any);
+      const erc20Contract = getErc20Contract(provider, contractKey);
+      return await erc20Contract.decimals();
+    } catch (e) {
+      console.warn('Failed to get contract decimals, using fallback 18:', e);
+      return 18; // Fallback to 18 decimals
+    }
+  };
+
   // URLパラメータから初期データを設定（最優先）
   useEffect(() => {
     if (initialRequest && !isLoadedFromUrl) {
@@ -170,29 +188,62 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         const jpyAmount = decoded.maxAmountRequired;
         console.log('💱 JPY金額の設定:', jpyAmount, typeof jpyAmount);
         
-        // base units に変換: JPY → base units (1 JPY = 1,000,000 base units)
-        const baseUnits = (parseFloat(jpyAmount) * 1000000).toString();
-        
         // まず先にrefでフラグを設定してネットワーク変更の影響を防ぐ
         isLoadedFromUrlRef.current = true;
         setIsLoadedFromUrl(true);
         console.log('✅ URLからの読み込み完了フラグ設定');
         
-        // その後で値を一括設定（React.batchの恩恵を受ける）
-        setAmount(jpyAmount);
-        setDescription(decoded.description);
-        setAmountInBaseUnits(baseUnits);
-        setRecipient(decoded.payTo);
-        setPaymentRequirements(decoded);
-        
-        console.log(`💰 Amount conversion: ${jpyAmount} JPY → ${baseUnits} base units`);
-        console.log('✅ URLからの読み込み完了');
-        
-        // ネットワークは最後に設定（状態更新の競合を避けるため少し遅延）
-        setTimeout(() => {
-          setSelectedNetwork(decoded.network);
-          console.log('🌐 ネットワーク設定完了:', decoded.network);
-        }, 10);
+        // Dynamic decimals detection and base units conversion
+        (async () => {
+          try {
+            const contractKey = getCurrentJPYCContract();
+            const decimals = await getContractDecimals(contractKey);
+            const baseUnits = ethers.parseUnits(jpyAmount, decimals).toString();
+            
+            console.log('🔍 Dynamic conversion:', {
+              jpyAmount,
+              contractKey,
+              decimals: decimals.toString(),
+              baseUnits,
+              calculation: `${jpyAmount} JPYC * 10^${decimals} = ${baseUnits} wei`
+            });
+            
+            // Set values with proper base units
+            setAmount(jpyAmount);
+            setDescription(decoded.description);
+            setAmountInBaseUnits(baseUnits);
+            setRecipient(decoded.payTo);
+            setPaymentRequirements(decoded);
+            
+            console.log(`💰 Amount conversion: ${jpyAmount} JPY → ${baseUnits} base units`);
+            console.log('✅ URLからの読み込み完了');
+            
+            // ネットワークは最後に設定（状態更新の競合を避けるため少し遅延）
+            setTimeout(() => {
+              setSelectedNetwork(decoded.network);
+              console.log('🌐 ネットワーク設定完了:', decoded.network);
+            }, 10);
+            
+          } catch (e) {
+            console.error('Failed to get dynamic decimals, using fallback:', e);
+            // Fallback to old calculation
+            const baseUnits = (parseFloat(jpyAmount) * 1000000).toString();
+            
+            setAmount(jpyAmount);
+            setDescription(decoded.description);
+            setAmountInBaseUnits(baseUnits);
+            setRecipient(decoded.payTo);
+            setPaymentRequirements(decoded);
+            
+            console.log(`💰 Fallback amount conversion: ${jpyAmount} JPY → ${baseUnits} base units`);
+            console.log('✅ URLからの読み込み完了 (fallback)');
+            
+            setTimeout(() => {
+              setSelectedNetwork(decoded.network);
+              console.log('🌐 ネットワーク設定完了:', decoded.network);
+            }, 10);
+          }
+        })();
         
       } catch (e) {
         console.error('URLの読み込みに失敗しました:', e);
@@ -230,11 +281,24 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     // amount の状態を更新
     setAmount(intValue.toString());
     
-    // 1 JPYC = 1,000,000 base units
+    // Dynamic JPYC base units calculation
     if (intValue > 0) {
-      const baseUnits = (intValue * 1000000).toString();
-      setAmountInBaseUnits(baseUnits);
-      console.log(`金額変更: ${intValue}円 → ${baseUnits} base units`);
+      // Get dynamic decimals and calculate base units
+      (async () => {
+        try {
+          const contractKey = getCurrentJPYCContract();
+          const decimals = await getContractDecimals(contractKey);
+          const baseUnits = ethers.parseUnits(intValue.toString(), decimals).toString();
+          setAmountInBaseUnits(baseUnits);
+          console.log(`金額変更 (動的小数点): ${intValue}円 → ${baseUnits} base units (${decimals} decimals)`);
+        } catch (e) {
+          console.error('Failed to get dynamic decimals for manual input, using fallback:', e);
+          // Fallback to 6 decimals
+          const baseUnits = (intValue * 1000000).toString();
+          setAmountInBaseUnits(baseUnits);
+          console.log(`金額変更 (fallback): ${intValue}円 → ${baseUnits} base units (6 decimals)`);
+        }
+      })();
     } else {
       setAmountInBaseUnits('0');
     }
@@ -272,7 +336,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     const authorization = {
       from: currentAddress,
       to: requirements.payTo,
-      value: requirements.maxAmountRequired.toString(), // JPY単位を使用
+      value: requirements.maxAmountRequired, // JPYC amount for wallet request (not wei)
       validAfter: (currentTime - 60).toString(), // 1分前から有効
       validBefore: (currentTime + requirements.maxTimeoutSeconds).toString(),
       nonce: nonce
@@ -280,7 +344,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
     // EIP-712 domain for signature
     const domain = {
-      name: "USD Coin",
+      name: "JPY Coin",
       version: "2",
       chainId: Number(currentConfig.chainId), // 選択されたネットワークのchainIdを使用
       verifyingContract: requirements.asset
@@ -647,7 +711,21 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   const resetForm = () => {
     // ネットワークに応じたデフォルト金額を設定
     setAmount('1'); // 表示用: 1 JPYC
-    setAmountInBaseUnits('1000000'); // base units
+    
+    // Dynamic base units calculation for default amount
+    (async () => {
+      try {
+        const contractKey = getCurrentJPYCContract();
+        const decimals = await getContractDecimals(contractKey);
+        const baseUnits = ethers.parseUnits('1', decimals).toString();
+        setAmountInBaseUnits(baseUnits);
+        console.log(`Reset form with dynamic decimals: 1 JPYC = ${baseUnits} base units (${decimals} decimals)`);
+      } catch (e) {
+        console.error('Failed to get dynamic decimals for reset, using fallback:', e);
+        setAmountInBaseUnits('1000000'); // fallback to 6 decimals
+      }
+    })();
+    
     setRecipient(currentAddress || '');
     setDescription('x402 Simple Payment Test');
     setError('');

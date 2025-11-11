@@ -107,14 +107,6 @@ const tx = await JPYCCore.transfer(to, amount, chainId);
 
 ## � X402 サブスクリプション決済テストの動作詳細
 
-### 📋 テストプラン一覧
-アプリには3つのサブスクリプションプランが用意されています：
-
-| プラン名 | 価格 | 期間 | 機能 |
-|---------|------|------|------|
-| **ベーシックプラン** | ¥100 | 30日間 | 基本機能、月間100回まで利用、メールサポート |
-| **プレミアムプラン** | ¥300 | 30日間 | 全機能利用可能、無制限利用、優先サポート、API アクセス |
-| **年間プラン** | ¥1000 | 365日間 | 全機能 + 年間割引特典 |
 
 ### 🔄 購入フローの詳細
 
@@ -414,6 +406,47 @@ npm install
 # 開発サーバーの起動
 npm run dev
 ```
+
+### 🌐 RPC設定について
+
+#### 開発環境（現在の実装）
+開発時はCORSエラーを回避するため、Vite dev serverのプロキシ機能を使用しています：
+- **Sepolia RPC**: `/rpc/sepolia` → `https://rpc.sepolia.org` へプロキシ
+- **利点**: ブラウザのCORSポリシーをバイパス、開発体験の向上
+- **制限**: 開発サーバー（`npm run dev`）でのみ動作
+
+#### 本番環境（推奨設定）⚠️
+**重要**: リポジトリを公開する際は、必ず以下のRPCプロバイダを使用してください：
+
+**推奨プロバイダ（APIキー必要）:**
+- [Infura](https://infura.io/) - 無料枠: 100,000リクエスト/日
+- [Alchemy](https://www.alchemy.com/) - 無料枠: 300Mリクエスト/月
+- [QuickNode](https://www.quicknode.com/) - 無料枠: 毎秒10リクエスト
+
+**設定方法:**
+1. いずれかのプロバイダでAPIキーを取得
+2. 環境変数に設定:
+   ```env
+   # .env.production
+   VITE_SEPOLIA_RPC=https://sepolia.infura.io/v3/YOUR_API_KEY
+   # または
+   VITE_SEPOLIA_RPC=https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY
+   ```
+3. `src/lib/jpyc.ts` の `NETWORK_CONFIG` を更新:
+   ```typescript
+   'sepolia': {
+     chainId: 11155111,
+     name: 'Sepolia',
+     rpcUrl: import.meta.env.VITE_SEPOLIA_RPC || 'https://rpc.sepolia.org',
+     blockExplorer: 'https://sepolia.etherscan.io'
+   }
+   ```
+
+**理由:**
+- 公開RPCエンドポイント（`https://rpc.sepolia.org`）はCORS対応がなく、ブラウザから直接アクセスできません
+- 本番環境ではVite dev proxyが動作しないため、CORS対応のRPCプロバイダが必須です
+- APIキー付きプロバイダは安定性・速度・レート制限の面でも優れています
+
 
 ## 📱 ウォレット接続について
 

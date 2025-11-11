@@ -49,6 +49,28 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
   // Plan form state
   const [isEditing, setIsEditing] = useState<string>(''); // plan id being edited
   const [isCreating, setIsCreating] = useState(false);
+
+  // Helper function to safely convert amount to JPYC
+  const convertAmountToJPYC = (amountStr: string): number => {
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount)) return 0;
+    
+    // If amount is very large (like 10^18), it's likely in 18-decimal wei format
+    if (amount > 1000000000000) {
+      console.log(`Converting large amount ${amount} from 18-decimal wei to JPYC: ${amount / 1e18}`);
+      return amount / 1e18; // 18 decimal places
+    }
+    // If amount is medium size (like 10^6), it's likely in 6-decimal format  
+    else if (amount > 1000000) {
+      console.log(`Converting medium amount ${amount} from 6-decimal format to JPYC: ${amount / 1e6}`);
+      return amount / 1e6; // 6 decimal places
+    }
+    // If amount is small, it's likely already in JPYC format
+    else {
+      console.log(`Amount ${amount} seems to be already in JPYC format`);
+      return amount;
+    }
+  };
   const [planForm, setPlanForm] = useState<Partial<SubscriptionPlan>>({
     name: '',
     jpycAmount: '1',
@@ -136,10 +158,14 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
   const savePlan = () => {
     if (!validatePlanForm()) return;
 
+    // Use 18 decimals for consistency with modern ERC20 tokens
+    const jpycAmount = parseFloat(planForm.jpycAmount || '1');
+    const weiAmount = (jpycAmount * 1e18).toString(); // 18-decimal wei
+
     const planData: SubscriptionPlan = {
       ...planForm as SubscriptionPlan,
       id: isEditing || `plan_${Date.now()}`,
-      amount: (parseFloat(planForm.jpycAmount || '1') * 1000000).toString(), // Convert to wei
+      amount: weiAmount, // Convert to 18-decimal wei for consistency
       createdAt: isEditing ? plans.find(p => p.id === isEditing)?.createdAt || Date.now() : Date.now()
     };
 
@@ -194,7 +220,7 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
     setIsCreating(true);
     setPlanForm({
       ...plan,
-      jpycAmount: (parseFloat(plan.amount) / 1000000).toString()
+      jpycAmount: convertAmountToJPYC(plan.amount).toString() // Use safe conversion
     });
   };
 
@@ -256,10 +282,10 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
     activePlans: plans.filter(p => p.isActive).length,
     totalSubscribers: subscribers.length,
     activeSubscribers: subscribers.filter(s => s.status === 'active' && s.endDate > Date.now()).length,
-    totalRevenue: subscribers.reduce((sum, s) => sum + (parseFloat(s.amount) / 1000000), 0),
+    totalRevenue: subscribers.reduce((sum, s) => sum + convertAmountToJPYC(s.amount), 0),
     monthlyRevenue: subscribers
       .filter(s => s.startDate > Date.now() - 30 * 24 * 60 * 60 * 1000)
-      .reduce((sum, s) => sum + (parseFloat(s.amount) / 1000000), 0)
+      .reduce((sum, s) => sum + convertAmountToJPYC(s.amount), 0)
   };
 
   return (
@@ -515,7 +541,7 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <span className="text-gray-500">価格:</span>
-                              <div className="font-medium">{(parseFloat(plan.amount) / 1000000).toFixed(0)} JPYC</div>
+                              <div className="font-medium">{convertAmountToJPYC(plan.amount).toFixed(0)} JPYC</div>
                             </div>
                             <div>
                               <span className="text-gray-500">間隔:</span>
@@ -627,7 +653,7 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
                             </td>
                             <td className="py-3 px-4">
                               <div className="text-sm font-medium">
-                                {(parseFloat(sub.amount) / 1000000).toFixed(0)} JPYC
+                                {convertAmountToJPYC(sub.amount).toFixed(0)} JPYC
                               </div>
                             </td>
                             <td className="py-3 px-4">
@@ -691,7 +717,7 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
                     <h4 className="font-medium mb-3">プラン別売上</h4>
                     {plans.map(plan => {
                       const planSubs = subscribers.filter(s => s.planId === plan.id);
-                      const planRevenue = planSubs.reduce((sum, s) => sum + (parseFloat(s.amount) / 1000000), 0);
+                      const planRevenue = planSubs.reduce((sum, s) => sum + convertAmountToJPYC(s.amount), 0);
                       return (
                         <div key={plan.id} className="flex justify-between text-sm py-1">
                           <span>{plan.name}:</span>
@@ -735,7 +761,7 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
                             <span>{new Date(sub.startDate).toLocaleDateString()}</span>
                           </div>
                           <div className="text-gray-500">
-                            {plans.find(p => p.id === sub.planId)?.name || '不明'} - {(parseFloat(sub.amount) / 1000000).toFixed(0)} JPYC
+                            {plans.find(p => p.id === sub.planId)?.name || '不明'} - {convertAmountToJPYC(sub.amount).toFixed(0)} JPYC
                           </div>
                         </div>
                       ))}

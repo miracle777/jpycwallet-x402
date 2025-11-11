@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import AmbireLogin from '../AmbireLogin';
-import { transferJPYC, checkSufficientBalance } from '../lib/jpyc';
+import { transferJPYC, checkSufficientBalance, getJPYCAddressForContract, getChainIdForNetwork, getNetworkDisplayName, NETWORK_CONFIG, JPYC_CONTRACTS, getJPYCContractsForNetwork, getProvider, getErc20Contract } from '../lib/jpyc';
+import type { SupportedNetwork, JPYCContract } from '../lib/jpyc';
 import { merchantAddress } from '../lib/products';
 
 interface SubscriptionPlan {
@@ -41,6 +42,10 @@ const X402SubscriptionTestPage: React.FC = () => {
     signer: ethers.Signer | null;
   }>({ address: null, signer: null });
 
+  // Network selection state
+  const [selectedNetwork, setSelectedNetwork] = useState<SupportedNetwork>('sepolia');
+  const [selectedContract, setSelectedContract] = useState<JPYCContract>('sepolia-community');
+
   // Available plans (from local storage - merchant created)
   const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
   
@@ -54,47 +59,128 @@ const X402SubscriptionTestPage: React.FC = () => {
     loadAvailablePlans();
   }, []);
 
+  // Update contract selection when network changes
+  useEffect(() => {
+    const availableContracts = getJPYCContractsForNetwork(selectedNetwork);
+    if (availableContracts.length > 0) {
+      setSelectedContract(availableContracts[0]);
+    }
+  }, [selectedNetwork]);
+
+  // Initialize plans with correct JPYC amounts
+  useEffect(() => {
+    if (availablePlans.length > 0 && selectedContract) {
+      initializePlansWithCorrectAmounts();
+    }
+  }, [selectedContract, availablePlans.length]);
+
   const loadAvailablePlans = () => {
     try {
-      const saved = localStorage.getItem('merchant_subscription_plans');
-      if (saved) {
-        const plans = JSON.parse(saved);
-        setAvailablePlans(plans);
-      } else {
-        // Default demo plans if none exist
-        const defaultPlans: SubscriptionPlan[] = [
-          {
-            id: 'demo_basic',
-            name: 'ベーシックプラン',
-            amount: '1000000', // 1 JPYC in wei
-            jpycAmount: '1',
-            interval: 'monthly',
-            duration: 30,
-            description: 'お試し用ベーシックプラン',
-            features: ['基本機能', '月間100回利用', 'メールサポート'],
-            merchantName: 'x402デモストア',
-            merchantId: 'DEMO_STORE_001',
-            createdAt: Date.now()
-          },
-          {
-            id: 'demo_premium',
-            name: 'プレミアムプラン',
-            amount: '5000000', // 5 JPYC in wei
-            jpycAmount: '5',
-            interval: 'monthly',
-            duration: 30,
-            description: 'フル機能付きプレミアムプラン',
-            features: ['全機能利用可能', '無制限利用', '優先サポート', 'API アクセス'],
-            merchantName: 'x402デモストア',
-            merchantId: 'DEMO_STORE_001',
-            createdAt: Date.now()
-          }
-        ];
-        localStorage.setItem('merchant_subscription_plans', JSON.stringify(defaultPlans));
-        setAvailablePlans(defaultPlans);
-      }
+      // Clear old data and recreate with fresh amounts
+      localStorage.removeItem('merchant_subscription_plans');
+      
+      // Create fresh default plans
+      const defaultPlans: SubscriptionPlan[] = [
+        {
+          id: 'demo_basic',
+          name: 'ベーシックプラン',
+          amount: '0', // Will be calculated based on JPYC decimals
+          jpycAmount: '1',
+          interval: 'monthly',
+          duration: 30,
+          description: 'お試し用ベーシックプラン',
+          features: ['基本機能', '月間100回利用', 'メールサポート'],
+          merchantName: 'x402デモストア',
+          merchantId: 'DEMO_STORE_001',
+          createdAt: Date.now()
+        },
+        {
+          id: 'demo_premium',
+          name: 'プレミアムプラン',
+          amount: '0', // Will be calculated based on JPYC decimals
+          jpycAmount: '5',
+          interval: 'monthly',
+          duration: 30,
+          description: 'フル機能付きプレミアムプラン',
+          features: ['全機能利用可能', '無制限利用', '優先サポート', 'API アクセス'],
+          merchantName: 'x402デモストア',
+          merchantId: 'DEMO_STORE_001',
+          createdAt: Date.now()
+        }
+      ];
+      console.log('🏗️ Created fresh default plans:', defaultPlans);
+      localStorage.setItem('merchant_subscription_plans', JSON.stringify(defaultPlans));
+      setAvailablePlans(defaultPlans);
     } catch (e) {
       console.error('Failed to load plans:', e);
+    }
+  };
+
+  // Initialize plans with correct JPYC wei amounts based on actual contract decimals
+  const initializePlansWithCorrectAmounts = async () => {
+    console.log('🔄 Attempting to initialize plans with correct amounts', {
+      selectedContract,
+      availablePlansLength: availablePlans.length,
+      availablePlans: availablePlans.map(p => ({
+        name: p.name,
+        jpycAmount: p.jpycAmount,
+        amount: p.amount
+      }))
+    });
+
+    if (!selectedContract || availablePlans.length === 0) {
+      console.log('❌ Skipping initialization: no contract or no plans');
+      return;
+    }
+
+    try {
+      console.log('🔍 Initializing plans with correct amounts for contract:', selectedContract);
+      
+      // Get JPYC decimals from contract
+      const provider = getProvider(JPYC_CONTRACTS[selectedContract].network as SupportedNetwork);
+      const contract = getErc20Contract(provider, selectedContract);
+      const decimals = await contract.decimals();
+      
+      console.log('📊 JPYC Contract decimals:', decimals);
+
+      // Update plans with correct wei amounts
+      const updatedPlans = availablePlans.map(plan => {
+        const jpycAmount = parseFloat(plan.jpycAmount);
+        const weiAmount = ethers.parseUnits(jpycAmount.toString(), decimals).toString();
+        
+        console.log(`💰 Plan ${plan.name}: ${jpycAmount} JPYC = ${weiAmount} wei (${decimals} decimals)`);
+        
+        return {
+          ...plan,
+          amount: weiAmount
+        };
+      });
+
+      console.log('✅ Plans updated with correct amounts:', updatedPlans.map(p => ({
+        name: p.name,
+        jpycAmount: p.jpycAmount,
+        amountWei: p.amount
+      })));
+
+      setAvailablePlans(updatedPlans);
+      
+      // Save updated plans to localStorage
+      localStorage.setItem('merchant_subscription_plans', JSON.stringify(updatedPlans));
+      
+    } catch (e) {
+      console.error('❌ Failed to initialize plan amounts:', e);
+      // Fallback to 18 decimals (standard ERC20)
+      console.log('🔄 Using fallback 18 decimals');
+      const updatedPlans = availablePlans.map(plan => {
+        const jpycAmount = parseFloat(plan.jpycAmount);
+        const weiAmount = ethers.parseUnits(jpycAmount.toString(), 18).toString();
+        console.log(`💰 Fallback - Plan ${plan.name}: ${jpycAmount} JPYC = ${weiAmount} wei (18 decimals)`);
+        return {
+          ...plan,
+          amount: weiAmount
+        };
+      });
+      setAvailablePlans(updatedPlans);
     }
   };
 
@@ -177,15 +263,56 @@ const X402SubscriptionTestPage: React.FC = () => {
     setSuccess('');
 
     try {
-      console.log(`🚀 ${plan.name} のx402サブスクリプション決済開始`);
+      // Force recalculation with current contract to ensure correct amounts
+      console.log('⚠️ Forcing plan recalculation with current contract...');
+      const jpycContract = getErc20Contract(walletData.signer, selectedContract);
+      const currentDecimals = await jpycContract.decimals();
+      
+      // Recalculate plan amount with current contract decimals
+      const recalculatedAmount = ethers.parseUnits(plan.jpycAmount, currentDecimals).toString();
+      const updatedPlan = {
+        ...plan,
+        amount: recalculatedAmount
+      };
+      
+      console.log('🔢 Contract decimals recalculation:', {
+        planName: plan.name,
+        jpycAmount: plan.jpycAmount,
+        oldAmount: plan.amount,
+        newAmount: recalculatedAmount,
+        decimals: currentDecimals.toString(),
+        selectedContract
+      });
 
-      // Step 1: Balance check
-      const actualJPYCAmount = (parseFloat(plan.amount) / 1000000).toString();
-      const balanceCheck = await checkSufficientBalance(walletData.signer, actualJPYCAmount);
+      console.log(`🚀 ${updatedPlan.name} のx402サブスクリプション決済開始 - Network: ${selectedNetwork}`);
+      console.log('📊 Plan details:', {
+        planId: updatedPlan.id,
+        planName: updatedPlan.name,
+        planAmountWei: updatedPlan.amount,
+        planJpycAmount: updatedPlan.jpycAmount,
+        selectedContract,
+        contractInfo: JPYC_CONTRACTS[selectedContract]
+      });
+
+      console.log('🔢 JPYC Contract decimals:', currentDecimals);
+      
+      // Verify that updatedPlan.amount (wei) and updatedPlan.jpycAmount match
+      const calculatedJPYC = ethers.formatUnits(updatedPlan.amount, currentDecimals);
+      console.log('💰 Amount verification:', {
+        planAmountWei: updatedPlan.amount,
+        decimals: currentDecimals.toString(),
+        calculatedJPYC: calculatedJPYC,
+        planJPYC: updatedPlan.jpycAmount,
+        shouldMatch: Math.abs(parseFloat(calculatedJPYC) - parseFloat(updatedPlan.jpycAmount)) < 0.01,
+        difference: Math.abs(parseFloat(calculatedJPYC) - parseFloat(updatedPlan.jpycAmount))
+      });
+      
+      // Use updatedPlan.jpycAmount for balance check (this is the actual JPYC amount we need)
+      const balanceCheck = await checkSufficientBalance(walletData.signer, updatedPlan.jpycAmount.toString(), selectedContract);
       
       if (!balanceCheck.sufficient) {
         setError(
-          `JPYC残高が不足しています。\n` +
+          `JPYC残高が不足しています (${JPYC_CONTRACTS[selectedContract].name})。\n` +
           `必要金額: ${balanceCheck.required.toFixed(0)} JPYC\n` +
           `現在残高: ${balanceCheck.currentBalance.toFixed(0)} JPYC\n` +
           `不足分: ${(balanceCheck.required - balanceCheck.currentBalance).toFixed(0)} JPYC`
@@ -194,86 +321,130 @@ const X402SubscriptionTestPage: React.FC = () => {
       }
 
       // Step 2: Create x402 PaymentRequirements
+      const jpycAddress = getJPYCAddressForContract(selectedContract);
+      const chainId = getChainIdForNetwork(selectedNetwork);
+      
+      // Ensure proper checksum addresses
+      const checksumJpycAddress = ethers.getAddress(jpycAddress);
+      const checksumMerchantAddress = ethers.getAddress(merchantAddress);
+      
+      console.log('🏗️ Creating X402 PaymentRequirements:', {
+        planAmountWei: updatedPlan.amount,
+        planJpycAmount: updatedPlan.jpycAmount,
+        jpycAddress: checksumJpycAddress,
+        merchantAddress: checksumMerchantAddress,
+        network: selectedNetwork,
+        chainId,
+        willUseJpycAmountForWallet: true
+      });
+      
       const paymentRequirements = {
         scheme: "exact",
-        network: "sepolia", // or selected network
-        maxAmountRequired: plan.amount,
-        resource: `https://api.x402store.com/subscription/${plan.id}/${Date.now()}`,
-        description: `${plan.name} - ${plan.description}`,
+        network: selectedNetwork,
+        maxAmountRequired: updatedPlan.jpycAmount, // Use JPYC amount for wallet display (not wei)
+        resource: `https://api.x402store.com/subscription/${updatedPlan.id}/${Date.now()}`,
+        description: `${updatedPlan.name} - ${updatedPlan.description}`,
         mimeType: "application/json",
-        payTo: merchantAddress,
+        payTo: checksumMerchantAddress,
         maxTimeoutSeconds: 600,
-        asset: "0xd3eF95d29A198868241FE374A999fc25F6152253", // Sepolia JPYC
+        asset: checksumJpycAddress,
         extra: {
           name: "JPYC",
           version: "2",
           subscriptionInfo: {
-            interval: plan.interval,
-            duration: plan.duration,
-            planName: plan.name,
-            merchantName: plan.merchantName,
-            merchantId: plan.merchantId
+            interval: updatedPlan.interval,
+            duration: updatedPlan.duration,
+            planName: updatedPlan.name,
+            merchantName: updatedPlan.merchantName,
+            merchantId: updatedPlan.merchantId,
+            network: selectedNetwork
           }
         }
       };
 
-      console.log('📋 x402 PaymentRequirements:', paymentRequirements);
+      console.log('📋 x402 PaymentRequirements:', {
+        maxAmountRequired: paymentRequirements.maxAmountRequired,
+        scheme: paymentRequirements.scheme,
+        asset: paymentRequirements.asset,
+        payTo: paymentRequirements.payTo
+      });
 
       // Step 3: Create and sign PaymentPayload
       const currentTime = Math.floor(Date.now() / 1000);
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const planInstanceId = `x402_sub_${plan.id}_${Date.now()}`;
 
+      // Ensure proper checksum addresses
+      const fromAddress = ethers.getAddress(walletData.address);
+      const toAddress = ethers.getAddress(checksumMerchantAddress);
+      const contractAddress = ethers.getAddress(checksumJpycAddress);
+
+      console.log('🔍 Address verification:', {
+        from: fromAddress,
+        to: toAddress,
+        contract: contractAddress,
+        chainId,
+        nonce
+      });
+
       const authorization = {
-        from: walletData.address,
-        to: merchantAddress,
-        value: plan.amount,
+        from: fromAddress,
+        to: toAddress,
+        value: updatedPlan.jpycAmount, // Use JPYC amount (not wei) for wallet request
         validAfter: (currentTime - 60).toString(),
         validBefore: (currentTime + 600).toString(),
         nonce: nonce
       };
 
+      console.log('🔐 EIP-712 Authorization:', {
+        from: authorization.from,
+        to: authorization.to,
+        value: authorization.value,
+        jpycAmount: updatedPlan.jpycAmount,
+        amountWei: updatedPlan.amount,
+        calculation: `Wallet request: ${updatedPlan.jpycAmount} JPYC (wei conversion happens during transfer)`,
+        nonce: authorization.nonce
+      });
+
       // EIP-712 signature for subscription
       const domain = {
         name: "JPY Coin",
         version: "2",
-        chainId: 11155111, // Sepolia
-        verifyingContract: paymentRequirements.asset
+        chainId: chainId,
+        verifyingContract: contractAddress
       };
 
       const types = {
-        SubscriptionAuthorization: [
+        TransferWithAuthorization: [
           { name: "from", type: "address" },
           { name: "to", type: "address" },
           { name: "value", type: "uint256" },
           { name: "validAfter", type: "uint256" },
           { name: "validBefore", type: "uint256" },
-          { name: "nonce", type: "bytes32" },
-          { name: "planId", type: "string" },
-          { name: "interval", type: "string" }
+          { name: "nonce", type: "bytes32" }
         ]
       };
 
-      const subscriptionMessage = {
-        ...authorization,
-        planId: planInstanceId,
-        interval: plan.interval
-      };
+      const subscriptionMessage = authorization;
 
       let signature = '';
       try {
         signature = await walletData.signer.signTypedData(domain, types, subscriptionMessage);
-        console.log('🔐 EIP-712サブスクリプション署名完了');
-      } catch (e) {
-        console.log('EIP-712署名に失敗、fallback署名を使用');
-        const message = JSON.stringify(subscriptionMessage);
-        signature = await walletData.signer.signMessage(message);
+        console.log('🔐 EIP-712 X402準拠署名完了');
+      } catch (e: any) {
+        console.error('❌ EIP-712署名に失敗:', e);
+        console.error('Error details:', {
+          message: e.message,
+          code: e.code,
+          data: e.data
+        });
+        throw new Error(`EIP-712署名に失敗しました: ${e.message || 'Unknown error'}`);
       }
 
       const paymentPayload = {
         x402Version: 1,
         scheme: "exact",
-        network: "sepolia",
+        network: selectedNetwork,
         payload: {
           signature,
           authorization,
@@ -289,22 +460,23 @@ const X402SubscriptionTestPage: React.FC = () => {
       console.log('🔐 x402 PaymentPayload作成完了');
 
       // Step 4: Execute payment
-      console.log('⛓️ ブロックチェーン決済実行');
-      const receipt = await transferJPYC(walletData.signer, merchantAddress, actualJPYCAmount);
+      console.log(`⛓️ ブロックチェーン決済実行 - Contract: ${JPYC_CONTRACTS[selectedContract].name}`);
+      // Use updatedPlan.jpycAmount (string) for transfer
+      const receipt = await transferJPYC(walletData.signer, merchantAddress, updatedPlan.jpycAmount, selectedContract);
       console.log('💳 Payment completed:', receipt.hash);
 
       // Step 5: Save subscription
       const startDate = Date.now();
-      const endDate = startDate + (plan.duration * 24 * 60 * 60 * 1000);
+      const endDate = startDate + (updatedPlan.duration * 24 * 60 * 60 * 1000);
       
       const subscription: UserSubscription = {
-        planId: plan.id,
+        planId: updatedPlan.id,
         subscriberAddress: walletData.address,
-        merchantName: plan.merchantName,
-        merchantId: plan.merchantId,
-        amount: plan.amount,
-        interval: plan.interval,
-        description: plan.description,
+        merchantName: updatedPlan.merchantName,
+        merchantId: updatedPlan.merchantId,
+        amount: updatedPlan.amount,
+        interval: updatedPlan.interval,
+        description: updatedPlan.description,
         startDate,
         endDate,
         status: 'active',
@@ -325,11 +497,16 @@ const X402SubscriptionTestPage: React.FC = () => {
       setSuccess(
         `🎉 x402サブスクリプション契約完了！\n\n` +
         `📋 Plan Details:\n` +
-        `• プラン: ${plan.name}\n` +
-        `• 金額: ${plan.jpycAmount} JPYC\n` +
-        `• 期間: ${getIntervalDisplay(plan.interval)} (${plan.duration}日)\n` +
-        `• 店舗: ${plan.merchantName}\n\n` +
-        `🔐 x402 Protocol:\n` +
+        `• プラン: ${updatedPlan.name}\n` +
+        `• 金額: ${updatedPlan.jpycAmount} JPYC\n` +
+        `• 期間: ${getIntervalDisplay(updatedPlan.interval)} (${updatedPlan.duration}日)\n` +
+        `• 店舗: ${updatedPlan.merchantName}\n\n` +
+        `🌐 Network: ${getNetworkDisplayName(selectedNetwork)} (Chain ID: ${chainId})\n` +
+        `💰 Contract: ${JPYC_CONTRACTS[selectedContract].name}\n` +
+        `📍 Contract Address: ${contractAddress}\n` +
+        `🏪 Merchant Address: ${toAddress}\n` +
+        `� From Address: ${fromAddress}\n` +
+        `�🔐 x402 Protocol:\n` +
         `• Version: ${paymentPayload.x402Version}\n` +
         `• Scheme: ${paymentPayload.scheme}\n` +
         `• Network: ${paymentPayload.network}\n` +
@@ -347,7 +524,7 @@ const X402SubscriptionTestPage: React.FC = () => {
       } else if (errorMessage.includes('insufficient funds')) {
         setError('残高が不足しています');
       } else {
-        setError(`サブスクリプション決済に失敗しました: ${errorMessage}`);
+        setError(`サブスクリプション決済に失敗しました (${JPYC_CONTRACTS[selectedContract].name}): ${errorMessage}`);
       }
       console.error('❌ Subscription purchase error:', e);
     } finally {
@@ -528,6 +705,130 @@ const X402SubscriptionTestPage: React.FC = () => {
         </div>
 
         <div className="max-w-6xl mx-auto">
+          {/* Network and Contract Selection */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4">🌐 ネットワーク & コントラクト選択</h2>
+            
+            {/* Network Selection */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
+                ネットワーク選択
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
+                {Object.entries(NETWORK_CONFIG).map(([networkKey, config]) => {
+                  const isSelected = selectedNetwork === networkKey;
+                  
+                  return (
+                    <button
+                      key={networkKey}
+                      onClick={() => setSelectedNetwork(networkKey as SupportedNetwork)}
+                      style={{
+                        padding: '12px',
+                        border: '2px solid',
+                        borderColor: isSelected ? '#3b82f6' : '#e5e7eb',
+                        borderRadius: '8px',
+                        backgroundColor: isSelected ? '#dbeafe' : '#ffffff',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: isSelected ? '#1d4ed8' : '#374151',
+                        marginBottom: '2px'
+                      }}>
+                        {config.name} {isSelected && '✓'}
+                      </div>
+                      <div style={{ 
+                        fontSize: '12px',
+                        color: '#6b7280'
+                      }}>
+                        Chain ID: {config.chainId}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Contract Selection */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
+                JPYCコントラクト選択
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px' }}>
+                {getJPYCContractsForNetwork(selectedNetwork).map((contractKey) => {
+                  const contract = JPYC_CONTRACTS[contractKey];
+                  const isSelected = selectedContract === contractKey;
+                  
+                  return (
+                    <button
+                      key={contractKey}
+                      onClick={() => setSelectedContract(contractKey)}
+                      style={{
+                        padding: '16px',
+                        border: '2px solid',
+                        borderColor: isSelected ? '#10b981' : '#e5e7eb',
+                        borderRadius: '8px',
+                        backgroundColor: isSelected ? '#d1fae5' : '#ffffff',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: isSelected ? '#065f46' : '#374151',
+                        marginBottom: '4px'
+                      }}>
+                        {contract.name} {isSelected && '✓'}
+                      </div>
+                      <div style={{ 
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        marginBottom: '4px'
+                      }}>
+                        {contract.description}
+                      </div>
+                      <div style={{ 
+                        fontSize: '11px',
+                        color: '#9ca3af',
+                        fontFamily: 'monospace',
+                        wordBreak: 'break-all'
+                      }}>
+                        {contract.address}
+                      </div>
+                      <div style={{ 
+                        fontSize: '11px',
+                        color: contract.isTestnet ? '#dc2626' : '#059669',
+                        fontWeight: '500',
+                        marginTop: '4px'
+                      }}>
+                        {contract.isTestnet ? '🧪 テストネット' : '🟢 メインネット'}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Current Selection Summary */}
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div style={{ fontSize: '14px', color: '#1e40af', marginBottom: '8px' }}>
+                <strong>🌐 選択中ネットワーク:</strong> {getNetworkDisplayName(selectedNetwork)} (Chain ID: {getChainIdForNetwork(selectedNetwork)})
+              </div>
+              <div style={{ fontSize: '14px', color: '#1e40af', marginBottom: '4px' }}>
+                <strong>💰 選択中コントラクト:</strong> {JPYC_CONTRACTS[selectedContract].name}
+              </div>
+              <div style={{ fontSize: '12px', color: '#3730a3', fontFamily: 'monospace' }}>
+                JPYCアドレス: {getJPYCAddressForContract(selectedContract)}
+              </div>
+            </div>
+          </div>
+
           {/* Wallet Connection */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 className="text-xl font-semibold mb-4">🔗 ウォレット接続</h2>
@@ -591,12 +892,31 @@ const X402SubscriptionTestPage: React.FC = () => {
             <div style={{ fontSize: '14px', color: '#1e40af', lineHeight: '1.6' }}>
               <ul style={{ margin: 0, paddingLeft: '20px' }}>
                 <li><strong>完全なx402フロー:</strong> PaymentRequirements → PaymentPayload → EIP-712署名 → 決済 → 保存</li>
-                <li><strong>実際のJPYC決済:</strong> Sepolia testnetでJPYCトークンを使用した実際の決済</li>
+                <li><strong>実際のJPYC決済:</strong> 選択したテストネットでJPYCトークンを使用した実際の決済</li>
+                <li><strong>マルチネットワーク対応:</strong> 複数のテストネットでの決済テスト</li>
+                <li><strong>複数JPYCコントラクト対応:</strong> ネットワーク毎に複数のJPYCアドレスから選択可能</li>
+                <li><strong>X402プロトコル準拠:</strong> EIP-3009 transferWithAuthorization を使用した正しい実装</li>
                 <li><strong>ウォレット接続:</strong> Ambire Walletでの接続とメタマスク対応</li>
                 <li><strong>残高チェック:</strong> 決済前にJPYC残高の確認</li>
                 <li><strong>サブスクリプション管理:</strong> アクティブな契約の表示と期間管理</li>
                 <li><strong>データ保存:</strong> ユーザーとマーチャント両方のローカルストレージに保存</li>
               </ul>
+              
+              <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
+                <strong>🌐 利用可能なJPYCコントラクト:</strong>
+                <div style={{ marginTop: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '8px' }}>
+                  {Object.entries(JPYC_CONTRACTS).map(([contractKey, contract]) => (
+                    <div key={contractKey} style={{ fontSize: '12px', padding: '4px', backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: '4px' }}>
+                      <div style={{ fontWeight: '600', color: contract.isTestnet ? '#dc2626' : '#059669' }}>
+                        {contract.isTestnet ? '🧪' : '�'} {contract.name}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                        {getNetworkDisplayName(contract.network as SupportedNetwork)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
