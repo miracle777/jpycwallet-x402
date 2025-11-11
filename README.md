@@ -904,18 +904,22 @@ graph LR
 
 ## 🔧 環境変数
 
-Vercel デプロイ時は、Project Settings → Environment Variables に以下を設定：
+### ローカル開発環境のセットアップ
 
+プロジェクトルートまたは `apps/web/` ディレクトリに以下の環境変数ファイルを作成してください：
+
+**`.env.development`** (開発環境用)
 ```env
-# 開発環境
 VITE_RPC_URL=https://rpc-amoy.polygon.technology
 VITE_CHAIN_ID=80002
 VITE_JPYC_ADDRESS=0xE7C3D8C5E8e84a4fBdE29F8fA9A89AB1b5Dd6b8F
 VITE_DEFAULT_CHAIN=polygon-amoy
 VITE_WALLETCONNECT_PROJECT_ID=your_project_id
 VITE_DAPP_URL=http://localhost:5173
+```
 
-# 本番環境
+**`env.production`** (本番環境用)
+```env
 VITE_RPC_URL=https://polygon-rpc.com
 VITE_CHAIN_ID=137
 VITE_JPYC_ADDRESS=0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB
@@ -923,6 +927,12 @@ VITE_DEFAULT_CHAIN=polygon
 VITE_WALLETCONNECT_PROJECT_ID=your_project_id
 VITE_DAPP_URL=https://your-domain.com
 ```
+
+⚠️ **重要**: これらのファイルは `.gitignore` に含まれており、GitHubにはアップロードされません。各自で作成が必要です。
+
+### Vercelデプロイ時の設定
+
+Vercel デプロイ時は、Project Settings → Environment Variables に上記の環境変数を設定してください。
 
 ## 🎯 プロジェクト完成度・貢献
 
