@@ -276,6 +276,11 @@ const [subscriptionPlans] = useState<SubscriptionPlan[]>([
 - ✅ 支払いデータのエンコード/デコード
 - ✅ 期限管理と検証機能
 
+**📱 QRコード決済のテスト方法**
+- QRコード決済機能のテストには、[jpyc-payment-scanner](https://github.com/miracle777/jpyc-payment-scanner) を使用してください
+- 本プロジェクト（支払いリクエスト生成側）と payment-scanner（QRスキャン・決済実行側）は事実上ペアとなるアプリケーションです
+- payment-scanner は iOS PWA 完全対応で、カメラスキャンから決済実行、履歴管理まで一貫した体験を提供します
+
 
 
 ### 3 サブスクリプション機能
