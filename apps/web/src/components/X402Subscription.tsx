@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
-import { transferJPYC, checkSufficientBalance } from '../lib/jpyc';
-import { saveUserSubscription } from '../lib/subscription';
-import { merchantAddress } from '../lib/products';
+import SubscriptionMerchantDashboard from './SubscriptionMerchantDashboard';
 
 interface X402SubscriptionProps {
   currentAddress?: string;
