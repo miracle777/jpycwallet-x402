@@ -34,7 +34,7 @@ export default function QRCodeDisplay({
         setParsedData(parsed);
 
         const imageUrl = await QRCode.toDataURL(qrData, {
-          width: 480, // 非常に大きなサイズ（120 * 4）
+          width: 288, // jpycwallet.devと同じサイズ（72 * 4）
           margin: 2,
           color: {
             dark: '#000000',
@@ -124,15 +124,13 @@ export default function QRCodeDisplay({
 
         {/* QRコード表示 */}
         {qrCodeImage && !isExpired ? (
-          <div className="qr-code-container">
-            <div className="flex justify-center">
-              <div className="p-4 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
-                <img 
-                  src={qrCodeImage} 
-                  alt="Payment QR Code" 
-                  className="w-72 h-72 mx-auto"
-                />
-              </div>
+          <div className="flex justify-center">
+            <div className="p-4 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
+              <img 
+                src={qrCodeImage} 
+                alt="Payment QR Code" 
+                className="w-72 h-72 mx-auto"
+              />
             </div>
           </div>
         ) : (
@@ -143,7 +141,7 @@ export default function QRCodeDisplay({
                   <div className="text-red-600 font-medium mb-4">QRコードが期限切れです</div>
                   <button
                     onClick={handleRefreshQR}
-                    className="btn btn-primary"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     更新する
                   </button>

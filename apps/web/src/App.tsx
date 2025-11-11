@@ -77,7 +77,7 @@ function App() {
           {!walletData.address ? (
             /* 未接続時: 中央配置 */
             <div className="max-w-md mx-auto">
-              <div className="card">
+              <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold mb-4">ウォレット接続</h2>
                 <AmbireLogin 
                   onConnect={handleWalletConnect} 
@@ -113,12 +113,12 @@ function App() {
               </div>
             </div>
           ) : (
-            /* 接続済み: レスポンシブレイアウト */
-            <div className="responsive-grid desktop-2-col">
-              {/* 左カラム: 設定・操作エリア（PCでは左、モバイルでは上） */}
-              <div className="space-y-6" style={{ maxWidth: '400px' }}> {/* 固定幅と一致 */}
+            /* 接続済み: 2カラムレイアウト（lg以上でのみ） */
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">{/* jpycwallet.devスタイル */}
+              {/* 左カラム: 設定・操作エリア */}
+              <div className="space-y-6">
                 {/* ウォレット情報 */}
-                <div className="card">
+                <div className="bg-white rounded-lg shadow-md p-6">{/* Tailwindスタイル */}
                   <h2 className="text-xl font-semibold mb-4">ウォレット接続</h2>
                   <AmbireLogin 
                     onConnect={handleWalletConnect} 
@@ -134,7 +134,7 @@ function App() {
                 </div>
 
                 {/* ネットワーク選択 */}
-                <div className="card">
+                <div className="bg-white rounded-lg shadow-md p-6">
                   <NetworkSelector
                     currentNetwork={selectedNetwork}
                     onNetworkChange={handleNetworkChange}
@@ -143,7 +143,7 @@ function App() {
                 </div>
 
                 {/* テスト用JPYC取得ガイド */}
-                <div className="card">
+                <div className="bg-white rounded-lg shadow-md p-6">
                   <FaucetGuide
                     chainId={selectedNetwork === 'polygon' ? 137 : 
                              selectedNetwork === 'polygon-amoy' ? 80002 :
@@ -154,7 +154,7 @@ function App() {
                 </div>
 
                 {/* タブメニュー */}
-                <div className="card">
+                <div className="bg-white rounded-lg shadow-md p-6">
                   <div className="nav-tabs">
                     {[
                       { id: 'payment', label: 'QR決済', icon: '📱' },
@@ -179,7 +179,7 @@ function App() {
                 </div>
 
                 {/* アクティブなタブコンテンツ */}
-                <div className="card">
+                <div className="bg-white rounded-lg shadow-md p-6">
                   {activeTab === 'payment' && (
                     <PaymentRequestSimple
                       onQRGenerated={handleQRGenerated}
@@ -246,7 +246,7 @@ function App() {
 
               {/* 右カラム: QRコード表示エリア（PCでは右、モバイルでは下） */}
               <div className="flex flex-col">
-                <div className="sticky top-4"> {/* top-8 から top-4 に変更して上部スペースを減らす */}
+                <div className="sticky top-8"> {/* 適度なトップスペース */}
                   {qrCodeData ? (
                     <div className="qr-code-container"> {/* 専用コンテナクラス追加 */}
                       <QRCodeDisplay 
@@ -258,7 +258,7 @@ function App() {
                     </div>
                   ) : (
                     /* QRコード未生成時のプレースホルダー */
-                    <div className="card text-center qr-code-container">{/* プレースホルダーにもQRコンテナクラス追加 */}
+                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
                       <h2 className="text-xl font-semibold mb-4">QRコード表示エリア</h2>
                       <div className="qr-code-container">
                         <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">

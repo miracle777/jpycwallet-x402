@@ -49,7 +49,7 @@ body {
   
   /* タブレットでも左右分割してQRコードスペースを確保 */
   .desktop-2-col {
-    grid-template-columns: 1fr 1.5fr; /* タブレットでは1:1.5の比率 */
+    grid-template-columns: 1fr 1fr; /* タブレットでは1:1の比率 */
   }
   
   .tablet-3-col {
@@ -64,7 +64,7 @@ body {
   }
   
   .desktop-2-col {
-    grid-template-columns: 400px 1fr; /* 左側を固定幅、右側は残り全て */
+    grid-template-columns: 1fr 1fr; /* デスクトップでもバランスの良い1:1比率 */
   }
   
   .desktop-3-col {
@@ -364,8 +364,8 @@ body {
 /* QRコードレスポンシブ */
 .qr-code-container {
   text-align: center;
-  padding: 30px; /* パディングを増加 */
-  min-height: 600px; /* さらに高く設定 */
+  padding: 24px; /* 適度なパディング */
+  min-height: 400px; /* jpycwallet.devと同じサイズに */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -374,8 +374,8 @@ body {
 .qr-code-container img {
   max-width: 100%;
   height: auto;
-  max-height: 500px; /* QRコードをさらに大きく */
-  min-height: 400px; /* 最小サイズも増加 */
+  max-height: 288px; /* jpycwallet.devと同じサイズに戻す */
+  min-height: 240px;
 }
 
 /* モバイルでのQRコード */
