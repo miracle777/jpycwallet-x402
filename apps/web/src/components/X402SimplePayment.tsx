@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
+import { getErc20Contract } from '../lib/jpyc';
+import { jpycAddress } from '../lib/chain';
 
 interface X402SimplePaymentProps {
   currentAddress?: string;
@@ -54,7 +56,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   signer,
   onPaymentComplete,
 }) => {
-  const [amount, setAmount] = useState('1000000'); // 1 USDC in base units
+  const [amount, setAmount] = useState('1000000'); // 1 JPYC in base units (1,000,000 = 1 JPYC)
   const [recipient, setRecipient] = useState('');
   const [description, setDescription] = useState('x402 Simple Payment Test');
   const [loading, setLoading] = useState(false);
@@ -74,16 +76,16 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   const createPaymentRequirements = (): PaymentRequirements => {
     return {
       scheme: "exact",
-      network: "base-sepolia", // Sepoliaテストネット
+      network: "polygon", // Polygonメインネット
       maxAmountRequired: amount,
       resource: `https://api.example.com/payment/${Date.now()}`,
       description,
       mimeType: "application/json",
       payTo: recipient,
       maxTimeoutSeconds: 300, // 5分
-      asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base Sepolia USDC
+      asset: "0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB", // Polygon mainnet JPYC
       extra: {
-        name: "USDC",
+        name: "JPYC",
         version: "2"
       }
     };
@@ -140,7 +142,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     return {
       x402Version: 1,
       scheme: "exact",
-      network: "base-sepolia",
+      network: "polygon",
       payload: {
         signature,
         authorization
@@ -182,6 +184,16 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     try {
       console.log('🚀 x402決済フロー開始');
 
+      // Step 0: ネットワークチェック
+      const currentNetwork = await signer.provider?.getNetwork();
+      console.log('Current network:', currentNetwork);
+      
+      if (currentNetwork?.chainId !== 137n) { // 137 is Polygon mainnet
+        setError('Polygonネットワークに接続してください。現在のネットワークでは決済できません。');
+        setLoading(false);
+        return;
+      }
+
       // Step 1: 402レスポンスをシミュレート
       console.log('📋 Step 1: Payment Requirements取得');
       const response402 = simulate402Response();
@@ -204,20 +216,23 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       });
 
       // Step 3: 決済実行（実際のブロックチェーン取引）
-      console.log('⛓️ Step 3: ブロックチェーン決済実行');
-      const tx = await signer.sendTransaction({
-        to: requirements.payTo,
-        value: 0, // USDC transferの場合、ETH valueは0
-        data: '0x', // 実際にはUSDCコントラクトのtransfer関数呼び出し
-      });
-
+      console.log('⛓️ Step 3: JPYC transfer実行');
+      
+      // JPYC ERC-20 contract transfer
+      const jpycContract = getErc20Contract(signer);
+      const decimals = await jpycContract.decimals();
+      const transferAmount = ethers.parseUnits((parseFloat(amount) / 1000000).toString(), decimals);
+      
+      console.log(`Transferring ${(parseFloat(amount) / 1000000)} JPYC to ${recipient}`);
+      const tx = await jpycContract.transfer(recipient, transferAmount);
+      
       const receipt = await tx.wait();
-      console.log('🎉 決済完了:', receipt?.hash);
+      console.log('🎉 JPYC transfer完了:', receipt?.hash);
 
       setSuccess(
         `x402決済が完了しました！\n\n` +
         `💳 Payment Details:\n` +
-        `• Amount: ${(parseFloat(amount) / 1000000).toFixed(6)} USDC\n` +
+        `• Amount: ${(parseFloat(amount) / 1000000).toFixed(0)} JPYC\n` +
         `• Network: ${requirements.network}\n` +
         `• Recipient: ${recipient}\n` +
         `• Resource: ${requirements.resource}\n\n` +
@@ -339,7 +354,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-              金額 (USDC base units)
+              金額 (JPYC base units)
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -364,7 +379,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                 fontSize: '12px', 
                 color: '#6b7280' 
               }}>
-                ≈ {(parseFloat(amount || '0') / 1000000).toFixed(6)} USDC
+                ≈ {(parseFloat(amount || '0') / 1000000).toFixed(6)} JPYC
               </div>
             </div>
           </div>

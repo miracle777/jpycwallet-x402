@@ -75,7 +75,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
 }) => {
   const [plan, setPlan] = useState<SubscriptionPlan>({
     name: 'x402プレミアムプラン',
-    amount: '5000000', // 5 USDC in base units
+    amount: '5000000', // 5 JPYC in base units
     interval: 'monthly',
     duration: 30,
     description: 'x402テスト用月額サブスクリプション',
@@ -93,16 +93,16 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
   const createSubscriptionPaymentRequirements = (): SubscriptionPaymentRequirements => {
     return {
       scheme: "exact",
-      network: "base-sepolia",
+      network: "polygon",
       maxAmountRequired: plan.amount,
       resource: `https://api.x402store.com/subscription/${Date.now()}`,
       description: `${plan.name} - ${plan.description}`,
       mimeType: "application/json",
       payTo: merchantAddress,
       maxTimeoutSeconds: 600, // 10分（サブスクリプション用に長め）
-      asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base Sepolia USDC
+      asset: "0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB", // Polygon mainnet JPYC
       extra: {
-        name: "USDC",
+        name: "JPYC",
         version: "2",
         subscriptionInfo: {
           interval: plan.interval,
@@ -138,9 +138,9 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
       nonce: nonce
     };
 
-    // EIP-712 domain for USDC
+    // EIP-712 domain for JPYC
     const domain = {
-      name: "USD Coin",
+      name: "JPY Coin",
       version: "2",
       chainId: 11155111, // Sepolia
       verifyingContract: requirements.asset
@@ -179,7 +179,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
     return {
       x402Version: 1,
       scheme: "exact",
-      network: "base-sepolia",
+      network: "polygon",
       payload: {
         signature,
         authorization,
@@ -209,14 +209,25 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
     try {
       console.log('🚀 x402サブスクリプション決済フロー開始');
 
+      // Step 0: ネットワークチェック
+      const currentNetwork = await signer.provider?.getNetwork();
+      console.log('Current network:', currentNetwork);
+      
+      if (currentNetwork?.chainId !== 137n) { // 137 is Polygon mainnet
+        setError('Polygonネットワークに接続してください。現在のネットワークでは決済できません。');
+        setLoading(false);
+        return;
+      }
+
       // Step 1: 残高チェック
-      const balanceCheck = await checkSufficientBalance(signer, plan.amount);
+      const actualJPYCAmount = (parseFloat(plan.amount) / 1000000).toString(); // base unitsを実JPYCに変換
+      const balanceCheck = await checkSufficientBalance(signer, actualJPYCAmount);
       if (!balanceCheck.sufficient) {
         setError(
-          `USDC残高が不足しています。\n` +
-          `必要金額: ${(balanceCheck.required / 1000000).toFixed(6)} USDC\n` +
-          `現在残高: ${(balanceCheck.currentBalance / 1000000).toFixed(6)} USDC\n` +
-          `不足分: ${((balanceCheck.required - balanceCheck.currentBalance) / 1000000).toFixed(6)} USDC`
+          `JPYC残高が不足しています。\n` +
+          `必要金額: ${balanceCheck.required.toFixed(6)} JPYC\n` +
+          `現在残高: ${balanceCheck.currentBalance.toFixed(6)} JPYC\n` +
+          `不足分: ${(balanceCheck.required - balanceCheck.currentBalance).toFixed(6)} JPYC`
         );
         return;
       }
@@ -244,7 +255,8 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
 
       // Step 5: ブロックチェーン決済実行
       console.log('⛓️ Step 4: サブスクリプション料金決済');
-      const receipt = await transferJPYC(signer, merchantAddress, plan.amount);
+      const paymentJPYCAmount = (parseFloat(plan.amount) / 1000000).toString(); // base unitsを実JPYCに変換
+      const receipt = await transferJPYC(signer, merchantAddress, paymentJPYCAmount);
       console.log('💳 Payment completed:', receipt.hash);
 
       // Step 6: x402 settlement simulation  
@@ -253,7 +265,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
         success: true,
         txHash: receipt.hash,
         subscriptionId: payload.payload.subscriptionData?.planId,
-        networkId: "base-sepolia"
+        networkId: "polygon"
       };
       console.log('✅ Settlement completed:', settlementResult);
 
@@ -286,7 +298,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
         `🎉 x402サブスクリプション契約完了！\n\n` +
         `📋 Contract Details:\n` +
         `• Plan: ${plan.name}\n` +
-        `• Amount: ${(parseFloat(plan.amount) / 1000000).toFixed(6)} USDC\n` +
+        `• Amount: ${(parseFloat(plan.amount) / 1000000).toFixed(6)} JPYC\n` +
         `• Interval: ${getIntervalDisplay(plan.interval)}\n` +
         `• Merchant: ${plan.merchantName}\n` +
         `• Duration: ${plan.duration}日\n\n` +
@@ -509,7 +521,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
               
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  金額 (USDC base units)
+                  金額 (JPYC base units)
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
@@ -533,7 +545,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
                     fontSize: '12px', 
                     color: '#6b7280' 
                   }}>
-                    ≈ {(parseFloat(plan.amount || '0') / 1000000).toFixed(6)} USDC
+                    ≈ {(parseFloat(plan.amount || '0') / 1000000).toFixed(6)} JPYC
                   </div>
                 </div>
               </div>
