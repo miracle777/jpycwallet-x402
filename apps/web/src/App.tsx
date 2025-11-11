@@ -62,9 +62,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         {/* ヘッダー */}
-        <div className="text-center mb-8">
+        <div className="max-w-7xl mx-auto text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">JPYC Wallet x402</h1>
           <p className="text-gray-600">Multi-Network Payment App with x402 Protocol</p>
           <p className="text-sm text-orange-600 mt-2">
@@ -73,7 +73,7 @@ function App() {
         </div>
 
         {/* メインコンテンツエリア */}
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto w-full">
           {!walletData.address ? (
             /* 未接続時: 中央配置 */
             <div className="max-w-md mx-auto">
@@ -114,9 +114,9 @@ function App() {
             </div>
           ) : (
             /* 接続済み: 2カラムレイアウト（lg以上でのみ） */
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">{/* jpycwallet.devスタイル */}
-              {/* 左カラム: 設定・操作エリア */}
-              <div className="space-y-6">
+            <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">{/* jpycwallet.devスタイル */}
+              {/* 左カラム: 設定・操作エリア（2/3幅） */}
+              <div className="lg:col-span-2 space-y-6">
                 {/* ウォレット情報 */}
                 <div className="bg-white rounded-lg shadow-md p-6">{/* Tailwindスタイル */}
                   <h2 className="text-xl font-semibold mb-4">ウォレット接続</h2>
@@ -245,8 +245,8 @@ function App() {
               </div>
 
               {/* 右カラム: QRコード表示エリア（PCでは右、モバイルでは下） */}
-              <div className="flex flex-col">
-                <div className="sticky top-8"> {/* 適度なトップスペース */}
+              <div className="lg:col-span-1 flex flex-col">
+                <div className="sticky top-8">{/* 適度なトップスペース */}
                   {qrCodeData ? (
                     <div className="qr-code-container"> {/* 専用コンテナクラス追加 */}
                       <QRCodeDisplay 
