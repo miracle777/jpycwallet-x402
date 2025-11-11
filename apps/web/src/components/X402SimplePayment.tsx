@@ -122,9 +122,11 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   const handleAmountChange = (value: string) => {
     setAmount(value);
     // ユーザー入力（JPYC数量）をbase unitsに変換
+    // 1 JPYC = 1,000,000 base units
     if (value && !isNaN(parseFloat(value))) {
-      const baseUnits = (parseFloat(value) * 1000000).toString();
+      const baseUnits = Math.floor(parseFloat(value) * 1000000).toString();
       setAmountInBaseUnits(baseUnits);
+      console.log(`金額変更: ${value} JPYC → ${baseUnits} base units`);
     }
   };
 
