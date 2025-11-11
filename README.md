@@ -350,6 +350,52 @@ npm run dev
 - MetaMaskを使用する場合は「Connect MetaMask」ボタンを使用
 - モバイルデバイスでは QRコードをスキャンして Ambire Wallet アプリで接続
 
+## 🔧 Ambire WalletでSepoliaネットワークを追加する
+
+**✅ 検証済み**: 2025年11月11日にSepoliaネットワークの追加が成功確認されました。
+
+### ChainListから追加（推奨・検証済み）
+
+1. **Ambire Walletの設定を開く**
+   - 設定 → Networks → "Add networks from ChainList"ボタンをクリック
+
+2. **SepoliaテストネットをChainListで検索**
+   - ChainList URL: https://chainlist.org/?search=11155111&testnets=true
+   - Chain ID `11155111` で検索するとSepolia Testnetが表示される
+   - "Connect Wallet"ボタンをクリック
+
+3. **ネットワークを追加**
+   - ネットワーク詳細を確認
+   - "Add network"ボタンをクリックして完了
+
+**✅ 追加確認済み**: 上記の手順でSepoliaテストネットの追加が正常に動作することを確認
+
+### 手動追加の場合（代替方法）
+
+もしChainListからうまくいかない場合は、手動で追加も可能：
+
+**設定 → Networks → "Add network manually"**で以下を入力：
+- **Network name**: Sepolia Testnet  
+- **Currency Symbol**: ETH
+- **RPC URL**: `https://sepolia.infura.io/v3/YOUR_INFURA_KEY` または `https://rpc.sepolia.org`
+- **Chain ID**: 11155111
+- **Block explorer URL**: https://sepolia.etherscan.io
+
+### Sepoliaでのガスレス決済について
+
+⚠️ **重要な制約**: 
+Ambire Walletの公式ドキュメントによると、すべてのネットワークでスマートアカウント機能（ガスレス決済）がサポートされているわけではありません。
+
+Sepoliaテストネットでは：
+- **通常の決済**: 正常に動作（MetaMaskと同様）
+- **ガスレス決済**: 制限される可能性があり（要テスト）
+
+**推奨テストフロー**:
+1. まずSepoliaネットワークを追加
+2. 通常決済でJPYC送金をテスト  
+3. ガスレス機能の動作確認
+4. 動作しない場合はPolygon Amoyまたは他対応ネットワークを使用
+
 ## 📁 プロジェクト構造
 
 ```
