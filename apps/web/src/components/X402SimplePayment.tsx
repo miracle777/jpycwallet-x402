@@ -59,7 +59,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   const [amount, setAmount] = useState('1000000'); // デフォルト: 1 JPYC or 0.001 ETH in base units
   const [recipient, setRecipient] = useState('');
   const [description, setDescription] = useState('x402 Simple Payment Test');
-  const [selectedNetwork, setSelectedNetwork] = useState<'polygon' | 'sepolia'>('polygon');
+  const [selectedNetwork, setSelectedNetwork] = useState<'polygon-amoy' | 'sepolia' | 'sepolia-official' | 'avalanche-fuji'>('sepolia');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
@@ -68,19 +68,37 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
   // ネットワーク設定
   const networkConfig = {
-    polygon: {
-      chainId: 137n,
-      name: 'Polygon',
+    'polygon-amoy': {
+      chainId: 80002n,
+      name: 'Polygon Amoy',
       currency: 'JPYC',
-      asset: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB', // JPYC
-      decimals: 6
+      asset: '0xE7C3D8C5E8e84a4fBdE29F8fA9A89AB1b5Dd6b8F',
+      decimals: 18,
+      rpcUrl: 'https://rpc-amoy.polygon.technology'
     },
     sepolia: {
       chainId: 11155111n,
-      name: 'Sepolia',
-      currency: 'ETH',
-      asset: 'ETH', // Native ETH
-      decimals: 18
+      name: 'Ethereum Sepolia (Community)',
+      currency: 'JPYC',
+      asset: '0xd3eF95d29A198868241FE374A999fc25F6152253',
+      decimals: 18,
+      rpcUrl: 'https://rpc.sepolia.org'
+    },
+    'sepolia-official': {
+      chainId: 11155111n,
+      name: 'Ethereum Sepolia (Official)',
+      currency: 'JPYC',
+      asset: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB',
+      decimals: 18,
+      rpcUrl: 'https://rpc.sepolia.org'
+    },
+    'avalanche-fuji': {
+      chainId: 43113n,
+      name: 'Avalanche Fuji',
+      currency: 'JPYC',
+      asset: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB',
+      decimals: 18,
+      rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc'
     }
   };
 
@@ -95,11 +113,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
   // ネットワーク変更時に適切なデフォルト金額を設定
   React.useEffect(() => {
-    if (selectedNetwork === 'sepolia') {
-      setAmount('100000000000000000'); // 0.1 ETH in wei (より大きな金額)
-    } else {
-      setAmount('1000000'); // 1 JPYC in base units
-    }
+    // 全てのテストネットワークで1 JPYCに統一
+    setAmount('1000000000000000000'); // 1 JPYC in wei (18 decimals)
   }, [selectedNetwork]);
 
   // x402 PaymentRequirements を作成
@@ -144,7 +159,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     const domain = {
       name: "USD Coin",
       version: "2",
-      chainId: 11155111, // Sepolia
+      chainId: Number(currentConfig.chainId), // 選択されたネットワークのchainIdを使用
       verifyingContract: requirements.asset
     };
 
@@ -384,7 +399,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
             </label>
             <select
               value={selectedNetwork}
-              onChange={(e) => setSelectedNetwork(e.target.value as 'polygon' | 'sepolia')}
+              onChange={(e) => setSelectedNetwork(e.target.value as 'polygon-amoy' | 'sepolia' | 'sepolia-official' | 'avalanche-fuji')}
               style={{
                 width: '100%',
                 padding: '10px',
@@ -394,8 +409,10 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                 backgroundColor: 'white'
               }}
             >
-              <option value="polygon">Polygon (JPYC)</option>
-              <option value="sepolia">Sepolia (ETH)</option>
+              <option value="polygon-amoy">Polygon Amoy (JPYC)</option>
+              <option value="sepolia">Ethereum Sepolia - Community (JPYC)</option>
+              <option value="sepolia-official">Ethereum Sepolia - Official (JPYC)</option>
+              <option value="avalanche-fuji">Avalanche Fuji (JPYC)</option>
             </select>
           </div>
 

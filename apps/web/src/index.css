@@ -1,10 +1,10 @@
+/* レスポンシブデザインのインポート */
+@import './styles/responsive.css';
+
 /* TailwindCSS base styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* レスポンシブデザインのインポート */
-@import url('./styles/responsive.css');
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;

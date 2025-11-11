@@ -73,9 +73,11 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
   signer,
   onPaymentComplete,
 }) => {
+  const [selectedNetwork, setSelectedNetwork] = useState<'polygon-amoy' | 'sepolia' | 'sepolia-official' | 'avalanche-fuji'>('sepolia');
+  
   const [plan, setPlan] = useState<SubscriptionPlan>({
     name: 'x402プレミアムプラン',
-    amount: '5000000', // 5 JPYC in base units
+    amount: '5000000000000000000', // 5 JPYC in wei (18 decimals)
     interval: 'monthly',
     duration: 30,
     description: 'x402テスト用月額サブスクリプション',
@@ -89,18 +91,48 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
   const [paymentRequirements, setPaymentRequirements] = useState<SubscriptionPaymentRequirements | null>(null);
   const [paymentPayload, setPaymentPayload] = useState<SubscriptionPaymentPayload | null>(null);
 
+  // ネットワーク設定
+  const networkConfig = {
+    'polygon-amoy': {
+      chainId: 80002,
+      name: 'Polygon Amoy',
+      asset: '0xE7C3D8C5E8e84a4fBdE29F8fA9A89AB1b5Dd6b8F',
+      rpcUrl: 'https://rpc-amoy.polygon.technology'
+    },
+    sepolia: {
+      chainId: 11155111,
+      name: 'Ethereum Sepolia (Community)',
+      asset: '0xd3eF95d29A198868241FE374A999fc25F6152253',
+      rpcUrl: 'https://rpc.sepolia.org'
+    },
+    'sepolia-official': {
+      chainId: 11155111,
+      name: 'Ethereum Sepolia (Official)',
+      asset: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB',
+      rpcUrl: 'https://rpc.sepolia.org'
+    },
+    'avalanche-fuji': {
+      chainId: 43113,
+      name: 'Avalanche Fuji',
+      asset: '0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB',
+      rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc'
+    }
+  };
+
+  const currentConfig = networkConfig[selectedNetwork];
+
   // x402 Subscription PaymentRequirements を作成
   const createSubscriptionPaymentRequirements = (): SubscriptionPaymentRequirements => {
     return {
       scheme: "exact",
-      network: "polygon",
+      network: selectedNetwork,
       maxAmountRequired: plan.amount,
       resource: `https://api.x402store.com/subscription/${Date.now()}`,
       description: `${plan.name} - ${plan.description}`,
       mimeType: "application/json",
       payTo: merchantAddress,
       maxTimeoutSeconds: 600, // 10分（サブスクリプション用に長め）
-      asset: "0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB", // Polygon mainnet JPYC
+      asset: currentConfig.asset,
       extra: {
         name: "JPYC",
         version: "2",
@@ -142,7 +174,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
     const domain = {
       name: "JPY Coin",
       version: "2",
-      chainId: 11155111, // Sepolia
+      chainId: currentConfig.chainId, // 選択されたネットワークのchainIdを使用
       verifyingContract: requirements.asset
     };
 
@@ -448,6 +480,31 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
 
         {/* サブスクリプションプラン設定 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '25px' }}>
+          
+          {/* ネットワーク選択 */}
+          <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '20px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>
+              🌐 ネットワーク選択
+            </h3>
+            
+            <select
+              value={selectedNetwork}
+              onChange={(e) => setSelectedNetwork(e.target.value as 'polygon-amoy' | 'sepolia' | 'sepolia-official' | 'avalanche-fuji')}
+              style={{
+                width: '100%',
+                padding: '10px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
+                backgroundColor: 'white'
+              }}
+            >
+              <option value="polygon-amoy">Polygon Amoy (JPYC)</option>
+              <option value="sepolia">Ethereum Sepolia - Community (JPYC)</option>
+              <option value="sepolia-official">Ethereum Sepolia - Official (JPYC)</option>
+              <option value="avalanche-fuji">Avalanche Fuji (JPYC)</option>
+            </select>
+          </div>
           
           {/* 店舗情報 */}
           <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '20px', border: '1px solid #e2e8f0' }}>

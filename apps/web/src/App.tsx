@@ -113,10 +113,10 @@ function App() {
               </div>
             </div>
           ) : (
-            /* 接続済み: 2カラムレイアウト（lg以上でのみ） */
-            <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">{/* jpycwallet.devスタイル */}
+            /* 接続済み: 2カラムレイアウト（md以上でのみ） */
+            <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">{/* jpycwallet.devスタイル */}
               {/* 左カラム: 設定・操作エリア（2/3幅） */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="md:col-span-2 space-y-6">
                 {/* ウォレット情報 */}
                 <div className="bg-white rounded-lg shadow-md p-6">{/* Tailwindスタイル */}
                   <h2 className="text-xl font-semibold mb-4">ウォレット接続</h2>
@@ -245,7 +245,7 @@ function App() {
               </div>
 
               {/* 右カラム: QRコード表示エリア（PCでは右、モバイルでは下） */}
-              <div className="lg:col-span-1 flex flex-col">
+              <div className="md:col-span-1 flex flex-col">
                 <div className="sticky top-8">{/* 適度なトップスペース */}
                   {qrCodeData ? (
                     <div className="qr-code-container"> {/* 専用コンテナクラス追加 */}
