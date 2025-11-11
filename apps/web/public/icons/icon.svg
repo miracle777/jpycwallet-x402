@@ -1,0 +1,11 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="128" fill="#4f46e5"/>
+  <g transform="translate(96, 96)">
+    <!-- Wallet Icon -->
+    <path d="M320 96H64C46.3269 96 32 110.327 32 128V352C32 369.673 46.3269 384 64 384H320C337.673 384 352 369.673 352 352V128C352 110.327 337.673 96 320 96Z" fill="white" fill-opacity="0.2"/>
+    <path d="M64 128H320V160H64V128Z" fill="white" fill-opacity="0.4"/>
+    <circle cx="288" cy="272" r="16" fill="white"/>
+    <!-- JPYC Text -->
+    <text x="192" y="280" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">¥</text>
+  </g>
+</svg>

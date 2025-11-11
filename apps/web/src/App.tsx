@@ -146,15 +146,15 @@ function App() {
   if (currentPage === 'subscription-merchant') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="w-full px-4 py-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
           {/* ヘッダー */}
           <div className="max-w-7xl mx-auto text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">🏪 Subscription Merchant Dashboard</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">🏪 Subscription Merchant Dashboard</h1>
             <p className="text-gray-600">x402サブスクリプション管理画面</p>
           </div>
 
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
               <AmbireLogin 
                 onConnect={handleWalletConnect} 
                 onDisconnect={handleWalletDisconnect}
@@ -194,15 +194,15 @@ function App() {
   if (currentPage === 'merchant') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="w-full px-4 py-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
           {/* ヘッダー */}
           <div className="max-w-7xl mx-auto text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">🛍️ Merchant Payment Request</h1>
-            <p className="text-gray-600">x402 Payment Protocol - Merchant Side</p>
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">🛍️ JPYC x402 Payment</h1>
+            <p className="text-gray-600">Merchant Payment Request Generator</p>
           </div>
 
           <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
               <AmbireLogin 
                 onConnect={handleWalletConnect} 
                 onDisconnect={handleWalletDisconnect}
@@ -235,15 +235,15 @@ function App() {
   if (currentPage === 'pay') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="w-full px-4 py-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
           {/* ヘッダー */}
           <div className="max-w-7xl mx-auto text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">💳 x402 Payment</h1>
-            <p className="text-gray-600">x402 Payment Protocol - Payer Side</p>
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">💳 JPYC Payment</h1>
+            <p className="text-gray-600">x402プロトコル決済</p>
           </div>
 
           <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
               <AmbireLogin 
                 onConnect={handleWalletConnect} 
                 onDisconnect={handleWalletDisconnect}
@@ -279,10 +279,10 @@ function App() {
   // メインページ
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="w-full px-4 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* ヘッダー */}
         <div className="max-w-7xl mx-auto text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">🛍️ JPYC x402 Payment</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">🛍️ JPYC x402 Payment</h1>
           <p className="text-gray-600">Merchant Payment Request Generator</p>
           <p className="text-sm text-gray-500 mt-2">
             x402プロトコルを使用したメーチャント向け決済リクエスト生成ツール
@@ -291,9 +291,9 @@ function App() {
 
         {/* メインコンテンツエリア - 常に2カラムレイアウト */}
         <div className="w-full" style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', gap: '24px', width: '100%' }}>
+          <div style={{ display: 'flex', gap: '24px', width: '100%' }} className="flex-col lg:flex-row">
             {/* 左カラム: メイン操作エリア（2/3幅） */}
-            <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: '0' }}>
+            <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: '0' }} className="w-full lg:w-auto">
               
               {!walletData.address ? (
                 /* 未接続時: ウォレット接続UI */

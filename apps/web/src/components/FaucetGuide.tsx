@@ -121,6 +121,27 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
       marginTop: '15px',
       fontSize: '14px',
     },
+    addressBox: {
+      fontSize: '12px',
+      fontFamily: 'monospace',
+      color: '#4b5563',
+      marginBottom: '6px',
+      wordBreak: 'break-all' as const,
+      overflowWrap: 'break-word' as const,
+      backgroundColor: '#f9fafb',
+      padding: '8px',
+      borderRadius: '6px',
+      border: '1px solid #e5e7eb',
+    },
+    contractAddressBox: {
+      backgroundColor: '#fef3c7',
+      padding: '10px',
+      borderRadius: '6px',
+      margin: '10px 0',
+      fontSize: '13px',
+      wordBreak: 'break-all' as const,
+      overflowWrap: 'break-word' as const,
+    },
   };
 
   const getCurrentNetworkInfo = () => {
@@ -147,10 +168,12 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
         <div style={styles.warning}>
           <strong>📍 現在のネットワーク:</strong> {getCurrentNetworkInfo()?.name}
           {chainId && JPYC_TOKENS[chainId] && (
-            <>
-              <br />
-              <strong>JPYCアドレス:</strong> {JPYC_TOKENS[chainId].address}
-            </>
+            <div style={{ marginTop: '8px' }}>
+              <strong>JPYCアドレス:</strong>
+              <div style={styles.addressBox}>
+                {JPYC_TOKENS[chainId].address}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -201,7 +224,7 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
                           <div style={{ fontWeight: 600, marginBottom: '6px' }}>
                             {token.name} {idx === 0 && '⭐️'}
                           </div>
-                          <div style={{ fontSize: '13px', fontFamily: 'monospace', color: '#4b5563', marginBottom: '6px' }}>
+                          <div style={styles.addressBox}>
                             📍 {token.address}
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
@@ -239,8 +262,11 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
                     <>
                       <div style={{ marginTop: '15px' }}>
                         <strong>📋 Faucetコントラクトからの取得手順:</strong>
-                        <div style={{ backgroundColor: '#fef3c7', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '13px' }}>
-                          <strong>🏗️ Faucetコントラクト:</strong> {networkInfo.faucetInfo!.contractAddress}
+                        <div style={styles.contractAddressBox}>
+                          <strong>🏗️ Faucetコントラクト:</strong>
+                          <div style={{ marginTop: '4px', wordBreak: 'break-all' as const }}>
+                            {networkInfo.faucetInfo!.contractAddress}
+                          </div>
                         </div>
                         <ul style={styles.stepList}>
                       <li style={styles.stepItem}>
@@ -303,7 +329,10 @@ const FaucetGuide: React.FC<FaucetGuideProps> = ({ chainId, userAddress }) => {
                     <strong>⚠️ 重要な注意事項:</strong><br />
                     • ガス代として各ネットワークのネイティブトークン（ETH、POL、AVAX）が必要です<br />
                     • 1回の実行で最大100,000 JPYC（10^23 wei単位）まで取得可能<br />
-                    • Faucetコントラクトアドレス: {networkInfo.faucetInfo!.contractAddress}<br />
+                    • Faucetコントラクトアドレス:
+                    <div style={{ marginTop: '4px', wordBreak: 'break-all' as const, fontFamily: 'monospace', fontSize: '12px' }}>
+                      {networkInfo.faucetInfo!.contractAddress}
+                    </div>
                     • テストネット用のため実際の価値はありません<br />
                     • {networkInfo.faucetInfo!.description}
                   </div>

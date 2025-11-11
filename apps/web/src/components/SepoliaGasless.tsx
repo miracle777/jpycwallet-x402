@@ -269,6 +269,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
       id: 'meta-transaction' as const,
       name: 'メタトランザクション',
       description: 'EIP-712署名を使用してリレーヤーが代理実行',
+      shortDescription: 'EIP-712署名で代理実行',
       icon: '🔄',
       status: '✅ Sepolia対応'
     },
@@ -276,6 +277,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
       id: 'paymaster' as const,
       name: 'ペイマスター',
       description: 'EIP-4337でガス代を第三者が支払い',
+      shortDescription: 'ガス代を第三者が支払い',
       icon: '💰',
       status: '🧪 シミュレーション'
     },
@@ -283,22 +285,23 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
       id: 'relayer' as const,
       name: 'リレーヤー',
       description: 'GSNスタイルのガスレス実行',
+      shortDescription: 'GSNスタイル実行',
       icon: '🚀',
       status: '🛠️ 開発中'
     }
   ];
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }} className="px-4 sm:px-6">
       {!currentAddress ? (
         <div style={{ 
           backgroundColor: 'white', 
           borderRadius: '12px', 
-          padding: '40px', 
+          padding: '30px 20px',
           textAlign: 'center',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)', 
           border: '1px solid #e5e7eb' 
-        }}>
+        }} className="sm:p-10">
           <div style={{ fontSize: '48px', marginBottom: '15px' }}>🔗</div>
           <h3 style={{ margin: '0 0 10px 0', color: '#374151' }}>ウォレット接続が必要です</h3>
           <p style={{ color: '#6b7280', margin: 0 }}>JPYCガスレス送付にはウォレットの接続が必要です</p>
@@ -307,11 +310,11 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
         <div style={{ 
           backgroundColor: 'white', 
           borderRadius: '12px', 
-          padding: '30px', 
+          padding: '20px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
           border: '1px solid #e5e7eb' 
-        }}>
-          <h2 style={{ margin: '0 0 25px 0', color: '#1f2937', fontSize: '24px', fontWeight: 'bold', textAlign: 'center' }}>
+        }} className="sm:p-8">
+          <h2 style={{ margin: '0 0 20px 0', color: '#1f2937', fontSize: '20px', fontWeight: 'bold', textAlign: 'center' }} className="sm:text-2xl sm:mb-6">
             ⛽ ガスレス JPYC 決済
           </h2>
 
@@ -334,27 +337,30 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
 
           {/* ネットワーク選択 */}
           <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#374151' }} className="sm:text-base">
               🌐 ネットワーク選択
             </h3>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {Object.entries(NETWORKS).map(([key, network]) => (
                 <button
                   key={key}
                   onClick={() => setSelectedNetwork(key)}
                   style={{
-                    padding: '10px 16px',
+                    padding: '8px 12px',
                     border: `2px solid ${selectedNetwork === key ? '#3b82f6' : '#e5e7eb'}`,
                     borderRadius: '8px',
                     backgroundColor: selectedNetwork === key ? '#eff6ff' : '#ffffff',
                     cursor: 'pointer',
-                    fontSize: '14px',
+                    fontSize: '13px',
                     fontWeight: selectedNetwork === key ? '600' : '400',
                     color: selectedNetwork === key ? '#1e40af' : '#6b7280',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap'
                   }}
+                  className="sm:text-sm sm:px-4 sm:py-2.5"
                 >
-                  {network.name}
+                  <span className="hidden sm:inline">{network.name}</span>
+                  <span className="inline sm:hidden">{key === 'sepolia' ? 'コミュニティ' : '公式'}</span>
                 </button>
               ))}
             </div>
@@ -362,16 +368,18 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
 
           {/* JPYC残高表示 */}
           {jpycBalance && (
-            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px', padding: '12px 15px', marginBottom: '20px' }} className="sm:p-4">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '16px' }}>💰</span>
-                <span style={{ fontWeight: '600', color: '#15803d' }}>JPYC残高 ({NETWORKS[selectedNetwork].name})</span>
+                <span style={{ fontWeight: '600', color: '#15803d', fontSize: '14px', wordBreak: 'break-word' }} className="sm:text-base">
+                  JPYC残高 ({NETWORKS[selectedNetwork].name})
+                </span>
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#15803d' }}>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#15803d' }} className="sm:text-xl">
                 {parseFloat(jpycBalance).toFixed(2)} JPYC
               </div>
               {parseFloat(jpycBalance) < 10 && (
-                <div style={{ fontSize: '12px', color: '#ca8a04', marginTop: '8px' }}>
+                <div style={{ fontSize: '11px', color: '#ca8a04', marginTop: '8px' }} className="sm:text-xs">
                   ⚠️ 残高が少なくなっています。Faucetガイドから入手できます。
                 </div>
               )}
@@ -438,7 +446,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
 
           {/* ガスレスモード選択 */}
           <div style={{ marginBottom: '25px' }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '14px', fontWeight: '600', color: '#374151' }} className="sm:text-base">
               ガスレス実行方式
             </h3>
             
@@ -448,7 +456,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
                   key={mode.id}
                   onClick={() => setGaslessMode(mode.id)}
                   style={{
-                    padding: '15px',
+                    padding: '12px 15px',
                     border: `2px solid ${gaslessMode === mode.id ? '#3b82f6' : '#e5e7eb'}`,
                     borderRadius: '8px',
                     backgroundColor: gaslessMode === mode.id ? '#eff6ff' : '#ffffff',
@@ -456,19 +464,20 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
                     transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '24px' }}>{mode.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: '600', color: '#1f2937' }}>{mode.name}</span>
-                        <span style={{ fontSize: '12px', color: '#6b7280' }}>{mode.status}</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ fontSize: '20px', flexShrink: 0 }}>{mode.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: '600', color: '#1f2937', fontSize: '14px' }}>{mode.name}</span>
+                        <span style={{ fontSize: '11px', color: '#6b7280', whiteSpace: 'nowrap' }}>{mode.status}</span>
                       </div>
-                      <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                        {mode.description}
+                      <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                        <span className="hidden sm:inline">{mode.description}</span>
+                        <span className="inline sm:hidden">{mode.shortDescription}</span>
                       </div>
                     </div>
                     {gaslessMode === mode.id && (
-                      <span style={{ color: '#3b82f6', fontSize: '18px' }}>✓</span>
+                      <span style={{ color: '#3b82f6', fontSize: '18px', flexShrink: 0 }}>✓</span>
                     )}
                   </div>
                 </div>
@@ -477,14 +486,14 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
           </div>
 
           {/* 送金フォーム */}
-          <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '20px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#374151' }}>
+          <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '15px', marginBottom: '20px', border: '1px solid #e2e8f0' }} className="sm:p-5">
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '14px', fontWeight: '600', color: '#374151' }} className="sm:text-base">
               💸 Sepolia JPYC送金
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', fontWeight: '500', color: '#374151' }} className="sm:text-sm">
                   受取アドレス
                 </label>
                 <input
@@ -496,15 +505,17 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
                     padding: '10px', 
                     border: '1px solid #d1d5db', 
                     borderRadius: '6px',
-                    fontSize: '14px',
-                    fontFamily: 'monospace'
+                    fontSize: '13px',
+                    fontFamily: 'monospace',
+                    wordBreak: 'break-all'
                   }}
+                  className="sm:text-sm"
                   placeholder="0x1234567890123456789012345678901234567890"
                 />
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', fontWeight: '500', color: '#374151' }} className="sm:text-sm">
                   送金金額 (JPYC)
                 </label>
                 <input
@@ -516,8 +527,9 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
                     padding: '10px', 
                     border: '1px solid #d1d5db', 
                     borderRadius: '6px',
-                    fontSize: '14px'
+                    fontSize: '13px'
                   }}
+                  className="sm:text-sm"
                   placeholder="0.001"
                   step="0.001"
                   min="0"
@@ -532,12 +544,12 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
             disabled={loading || !recipientAddress || !amount || !isAmbireWallet}
             style={{
               width: '100%',
-              padding: '16px',
+              padding: '14px 16px',
               borderRadius: '8px',
               border: 'none',
               backgroundColor: (loading || !recipientAddress || !amount || !isAmbireWallet) ? '#9ca3af' : '#10b981',
               color: 'white',
-              fontSize: '16px',
+              fontSize: '14px',
               fontWeight: '600',
               cursor: (loading || !recipientAddress || !amount || !isAmbireWallet) ? 'not-allowed' : 'pointer',
               display: 'flex',
@@ -545,6 +557,7 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
               justifyContent: 'center',
               gap: '8px'
             }}
+            className="sm:text-base sm:py-4"
           >
             {loading ? (
               <>
@@ -566,18 +579,18 @@ const SepoliaGasless: React.FC<SepoliaGaslessProps> = ({
 
           {/* 注意事項 */}
           <div style={{ 
-            fontSize: '12px', 
+            fontSize: '11px',
             color: '#6b7280', 
             backgroundColor: '#f0f9ff', 
-            padding: '15px', 
+            padding: '12px 15px',
             borderRadius: '6px',
             border: '1px solid #0ea5e9',
             marginTop: '15px'
-          }}>
-            <div style={{ fontWeight: '500', marginBottom: '8px', color: '#0c4a6e' }}>
+          }} className="sm:text-xs sm:p-4">
+            <div style={{ fontWeight: '500', marginBottom: '8px', color: '#0c4a6e', fontSize: '12px' }} className="sm:text-sm">
               ⚠️ ガスレス決済について:
             </div>
-            <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: '1.5' }}>
+            <ul style={{ margin: 0, paddingLeft: '18px', lineHeight: '1.5' }} className="sm:pl-5">
               <li><strong>Ambire Wallet 専用機能</strong>: アカウント抽象化によるガスレス送金</li>
               <li>実際のガスレス実装にはリレーヤーやペイマスターの設定が必要です</li>
               <li>このデモは概念実証で、実際のガス料金は発生する場合があります</li>

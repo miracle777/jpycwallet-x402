@@ -9,6 +9,33 @@ html {
   box-sizing: inherit;
 }
 
+/* 長いアドレスやハッシュの自動改行 */
+.address-text,
+.hash-text,
+code,
+pre {
+  word-break: break-all;
+  overflow-wrap: break-word;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  hyphens: auto;
+}
+
+/* モバイルでのアドレス表示 */
+@media (max-width: 767px) {
+  code, pre {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  /* アドレス入力フィールド */
+  input[type="text"][placeholder*="0x"],
+  input[value*="0x"] {
+    font-size: 0.75rem;
+    word-break: break-all;
+  }
+}
+
 /* ベーススタイル（Tailwindが優先されるように!importantを避ける） */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
