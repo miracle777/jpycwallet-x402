@@ -56,7 +56,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   signer,
   onPaymentComplete,
 }) => {
-  const [amount, setAmount] = useState('1000000'); // デフォルト: 1 JPYC (1000000 base units)
+  const [amount, setAmount] = useState('1'); // デフォルト: 1 JPYC（表示用）
+  const [amountInBaseUnits, setAmountInBaseUnits] = useState('1000000'); // 内部用: base units
   const [recipient, setRecipient] = useState('');
   const [description, setDescription] = useState('x402 Simple Payment Test');
   const [selectedNetwork, setSelectedNetwork] = useState<'polygon-amoy' | 'sepolia' | 'sepolia-official' | 'avalanche-fuji'>('sepolia');
@@ -114,15 +115,25 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   // ネットワーク変更時に適切なデフォルト金額を設定
   React.useEffect(() => {
     // 全てのテストネットワークで1 JPYCに統一
-    setAmount('1000000000000000000'); // 1 JPYC in wei (18 decimals)
+    setAmount('1'); // 表示用: 1 JPYC
   }, [selectedNetwork]);
+
+  // 金額変更時に base units に変換
+  const handleAmountChange = (value: string) => {
+    setAmount(value);
+    // ユーザー入力（JPYC数量）をbase unitsに変換
+    if (value && !isNaN(parseFloat(value))) {
+      const baseUnits = (parseFloat(value) * 1000000).toString();
+      setAmountInBaseUnits(baseUnits);
+    }
+  };
 
   // x402 PaymentRequirements を作成
   const createPaymentRequirements = (): PaymentRequirements => {
     return {
       scheme: "exact",
       network: selectedNetwork,
-      maxAmountRequired: amount,
+      maxAmountRequired: amountInBaseUnits, // base unitsを使用
       resource: `https://api.example.com/payment/${Date.now()}`,
       description,
       mimeType: "application/json",
@@ -345,8 +356,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
   const resetForm = () => {
     // ネットワークに応じたデフォルト金額を設定
-    const defaultAmount = selectedNetwork === 'sepolia' ? '100000000000000000' : '1000000';
-    setAmount(defaultAmount);
+    setAmount('1'); // 表示用: 1 JPYC
+    setAmountInBaseUnits('1000000'); // base units
     setRecipient(currentAddress || '');
     setDescription('x402 Simple Payment Test');
     setError('');
@@ -459,13 +470,13 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-              金額 ({currentConfig.currency} base units)
+              金額 (JPYC / 円)
             </label>
             <div style={{ position: 'relative' }}>
               <input
                 type="number"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => handleAmountChange(e.target.value)}
                 style={{ 
                   width: '100%', 
                   padding: '10px', 
@@ -473,8 +484,9 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                   borderRadius: '6px',
                   fontSize: '14px'
                 }}
-                placeholder={selectedNetwork === 'sepolia' ? '100000000000000000' : '1000000'}
+                placeholder="1"
                 min="0"
+                step="0.1"
               />
               <div style={{ 
                 position: 'absolute', 
@@ -484,11 +496,11 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                 fontSize: '12px', 
                 color: '#6b7280' 
               }}>
-                ≈ {selectedNetwork === 'sepolia' 
-                  ? (parseFloat(amount || '0') / Math.pow(10, currentConfig.decimals)).toFixed(4)
-                  : (parseFloat(amount || '0') / 1000000).toFixed(0)
-                } {currentConfig.currency}
+                {amount ? `${parseFloat(amount).toFixed(2)} JPYC` : '0 JPYC'}
               </div>
+            </div>
+            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              Base Units: {amountInBaseUnits}
             </div>
           </div>
 
