@@ -76,9 +76,14 @@ const X402SubscriptionTestPage: React.FC = () => {
 
   const loadAvailablePlans = () => {
     try {
-      // Clear old data and recreate with fresh amounts
-      localStorage.removeItem('merchant_subscription_plans');
-      
+      // If merchant has created plans, use them. Otherwise create defaults.
+      const saved = localStorage.getItem('merchant_subscription_plans');
+      if (saved) {
+        const parsed: SubscriptionPlan[] = JSON.parse(saved);
+        setAvailablePlans(parsed);
+        return;
+      }
+
       // Create fresh default plans
       const defaultPlans: SubscriptionPlan[] = [
         {

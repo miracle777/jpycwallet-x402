@@ -52,23 +52,29 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
 
   // Helper function to safely convert amount to JPYC
   const convertAmountToJPYC = (amountStr: string): number => {
-    const amount = parseFloat(amountStr);
-    if (isNaN(amount)) return 0;
-    
-    // If amount is very large (like 10^18), it's likely in 18-decimal wei format
-    if (amount > 1000000000000) {
-      console.log(`Converting large amount ${amount} from 18-decimal wei to JPYC: ${amount / 1e18}`);
-      return amount / 1e18; // 18 decimal places
-    }
-    // If amount is medium size (like 10^6), it's likely in 6-decimal format  
-    else if (amount > 1000000) {
-      console.log(`Converting medium amount ${amount} from 6-decimal format to JPYC: ${amount / 1e6}`);
-      return amount / 1e6; // 6 decimal places
-    }
-    // If amount is small, it's likely already in JPYC format
-    else {
-      console.log(`Amount ${amount} seems to be already in JPYC format`);
-      return amount;
+    // Normalize inputs that may be wei (18-decimals) or already human JPYC
+    try {
+      if (typeof amountStr === 'string') {
+        const trimmed = amountStr.trim();
+        // If looks like a large integer (only digits, length >= 13), treat as wei and format
+        if (/^\d+$/.test(trimmed) && trimmed.length >= 13) {
+          try {
+            const formatted = ethers.formatUnits(trimmed, 18); // returns string
+            return parseFloat(formatted);
+          } catch (e) {
+            console.warn('formatUnits failed, falling back to numeric parse', e);
+          }
+        }
+        // otherwise try parse as float human-readable JPYC
+        const n = parseFloat(trimmed);
+        return isNaN(n) ? 0 : n;
+      }
+      // Fallback
+      const fallback = parseFloat((amountStr as any) || '0');
+      return isNaN(fallback) ? 0 : fallback;
+    } catch (e) {
+      console.error('convertAmountToJPYC error:', e);
+      return 0;
     }
   };
   const [planForm, setPlanForm] = useState<Partial<SubscriptionPlan>>({
@@ -97,7 +103,14 @@ const SubscriptionMerchantDashboard: React.FC<SubscriptionMerchantDashboardProps
     try {
       const saved = localStorage.getItem('merchant_subscription_plans');
       if (saved) {
-        setPlans(JSON.parse(saved));
+        const parsed: SubscriptionPlan[] = JSON.parse(saved);
+        // Normalize plans: ensure isActive exists (default true) and ensure amount is string
+        const normalized = parsed.map(p => ({
+          ...p,
+          isActive: typeof p.isActive === 'boolean' ? p.isActive : true,
+          amount: typeof (p as any).amount !== 'undefined' ? String((p as any).amount) : (p.amount || '0')
+        }));
+        setPlans(normalized);
       }
     } catch (e) {
       console.error('Failed to load plans:', e);

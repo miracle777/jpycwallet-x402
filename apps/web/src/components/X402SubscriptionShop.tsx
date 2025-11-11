@@ -28,42 +28,22 @@ const X402SubscriptionShop: React.FC<X402SubscriptionShopProps> = ({
   signer,
   onPaymentComplete
 }) => {
-  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([
-    {
-      id: 'basic',
-      name: 'ベーシックプラン',
-      price: '100',
-      duration: 30,
-      description: 'スタンダードな機能をご利用いただけます',
-      features: ['基本機能', '月間100回まで利用', 'メールサポート']
-    },
-    {
-      id: 'premium',
-      name: 'プレミアムプラン', 
-      price: '300',
-      duration: 30,
-      description: 'より多くの機能と優先サポート',
-      features: ['全機能利用可能', '無制限利用', '優先サポート', 'API アクセス']
-    },
-    {
-      id: 'yearly',
-      name: '年間プラン',
-      price: '1000',
-      duration: 365,
-      description: 'お得な年間契約プラン',
-      features: ['全機能利用可能', '無制限利用', '優先サポート', 'API アクセス', '年間割引']
-    }
-  ]);
+  // Load plans from localStorage instead of hardcoded defaults
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
 
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
   const [loading, setLoading] = useState<string>(''); // どのプランがローディング中か
   const [error, setError] = useState<string>('');
 
+  // Load available plans on mount (even without wallet connection)
+  useEffect(() => {
+    loadAvailablePlans();
+  }, []);
+
   // ユーザーのサブスクリプション状態を確認
   useEffect(() => {
     if (currentAddress) {
       loadUserSubscriptions();
-      loadAvailablePlans();
     }
   }, [currentAddress]);
 
@@ -72,36 +52,77 @@ const X402SubscriptionShop: React.FC<X402SubscriptionShopProps> = ({
       const saved = localStorage.getItem('merchant_subscription_plans');
       if (saved) {
         const plans = JSON.parse(saved);
-        // Helper function to safely convert amount to JPYC
+
+        // Helper function to safely convert amount to JPYC using ethers
         const convertAmountToJPYC = (amountStr: string): number => {
-          const amount = parseFloat(amountStr);
-          if (isNaN(amount)) return 0;
-          
-          // If amount is very large (like 10^18), it's likely in 18-decimal wei format
-          if (amount > 1000000000000) {
-            return amount / 1e18; // 18 decimal places
-          }
-          // If amount is medium size (like 10^6), it's likely in 6-decimal format  
-          else if (amount > 1000000) {
-            return amount / 1e6; // 6 decimal places
-          }
-          // If amount is small, it's likely already in JPYC format
-          else {
-            return amount;
+          try {
+            if (typeof amountStr === 'string') {
+              const trimmed = amountStr.trim();
+              if (/^\d+$/.test(trimmed) && trimmed.length >= 13) {
+                // likely wei (18 decimals)
+                try {
+                  const formatted = ethers.formatUnits(trimmed, 18);
+                  return parseFloat(formatted);
+                } catch (e) {
+                  console.warn('formatUnits failed, falling back to parseFloat', e);
+                }
+              }
+              const n = parseFloat(trimmed);
+              return isNaN(n) ? 0 : n;
+            }
+            const fallback = parseFloat((amountStr as any) || '0');
+            return isNaN(fallback) ? 0 : fallback;
+          } catch (e) {
+            console.error('convertAmountToJPYC error:', e);
+            return 0;
           }
         };
 
-        // Convert stored plans to component format
-        const convertedPlans = plans.map((plan: any) => ({
-          id: plan.id,
-          name: plan.name,
-          price: convertAmountToJPYC(plan.amount).toFixed(0), // Convert to JPYC safely
-          duration: plan.duration,
-          description: plan.description,
-          features: plan.features || []
-        }));
+        // Filter out inactive plans and convert amounts
+        const convertedPlans = plans
+          .filter((plan: any) => plan.isActive !== false)
+          .map((plan: any) => ({
+            id: plan.id,
+            name: plan.name,
+            price: convertAmountToJPYC(plan.amount).toFixed(0),
+            duration: plan.duration,
+            description: plan.description,
+            features: plan.features || []
+          }));
+
         setSubscriptionPlans(convertedPlans);
+        return;
       }
+
+      // No saved plans → fallback defaults
+      const defaultPlans: SubscriptionPlan[] = [
+        {
+          id: 'basic',
+          name: 'ベーシックプラン',
+          price: '1',
+          duration: 30,
+          description: 'スタンダードな機能をご利用いただけます',
+          features: ['基本機能', '月間100回まで利用', 'メールサポート']
+        },
+        {
+          id: 'premium',
+          name: 'プレミアムプラン',
+          price: '5',
+          duration: 30,
+          description: 'より多くの機能と優先サポート',
+          features: ['全機能利用可能', '無制限利用', '優先サポート', 'API アクセス']
+        },
+        {
+          id: 'yearly',
+          name: '年間プラン',
+          price: '1000',
+          duration: 365,
+          description: 'お得な年間契約プラン',
+          features: ['全機能利用可能', '無制限利用', '優先サポート', 'API アクセス', '年間割引']
+        }
+      ];
+
+      setSubscriptionPlans(defaultPlans);
     } catch (e) {
       console.error('Failed to load plans:', e);
     }
