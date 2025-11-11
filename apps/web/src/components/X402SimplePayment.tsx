@@ -132,9 +132,6 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         // maxAmountRequiredはJPY単位で来るので、そのまま表示用のamountに設定
         const jpyAmount = decoded.maxAmountRequired;
         console.log('💱 JPY金額の設定:', jpyAmount, typeof jpyAmount);
-        setAmount(jpyAmount);
-        setDescription(decoded.description);
-        setSelectedNetwork(decoded.network);
         
         // base units に変換: JPY → base units (1 JPY = 1,000,000 base units)
         const baseUnits = (parseFloat(jpyAmount) * 1000000).toString();
@@ -142,8 +139,15 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         
         console.log(`💰 Amount conversion: ${jpyAmount} JPY → ${baseUnits} base units`);
         
-        // 最後にフラグを設定して他のuseEffectが実行されないようにする
+        // 先にフラグを設定してネットワーク変更の影響を防ぐ
         setIsLoadedFromUrl(true);
+        console.log('✅ URLからの読み込み完了フラグ設定');
+        
+        // その後で値を設定
+        setAmount(jpyAmount);
+        setDescription(decoded.description);
+        setSelectedNetwork(decoded.network);
+        
         console.log('✅ URLからの読み込み完了');
         
       } catch (e) {
@@ -160,6 +164,8 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
 
   // ネットワーク変更時に適切なデフォルト金額を設定（URLから読み込まれていない場合のみ）
   useEffect(() => {
+    console.log('🌐 ネットワーク変更処理開始: isLoadedFromUrl =', isLoadedFromUrl, 'selectedNetwork =', selectedNetwork);
+    
     // URLから読み込まれている場合は何もしない
     if (isLoadedFromUrl) {
       console.log('🌐 ネットワーク変更: URLから読み込み済みのため金額は変更しません');
