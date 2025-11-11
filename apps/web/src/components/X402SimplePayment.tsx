@@ -114,9 +114,11 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   const networkConfig = externalNetworkConfigs || defaultNetworkConfig;
   const currentConfig = networkConfig[selectedNetwork];
 
-  // URLからPaymentRequirementsを読み込み
+  // URLパラメータから初期データを設定（最優先）
   useEffect(() => {
     if (initialRequest && !isLoadedFromUrl) {
+      console.log('🔗 URLパラメータを処理開始:', initialRequest);
+      
       try {
         const decoded = JSON.parse(atob(initialRequest));
         
@@ -140,30 +142,33 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         
         console.log(`💰 Amount conversion: ${jpyAmount} JPY → ${baseUnits} base units`);
         
+        // 最後にフラグを設定して他のuseEffectが実行されないようにする
         setIsLoadedFromUrl(true);
+        console.log('✅ URLからの読み込み完了');
+        
       } catch (e) {
         console.error('URLの読み込みに失敗しました:', e);
         setError('決済リクエストの読み込みに失敗しました。');
       }
     }
-  }, [initialRequest, isLoadedFromUrl]);
-
-  // ウォレット接続時に受取アドレスを自動設定（URLから読み込まれていない場合）
+  }, [initialRequest]); // isLoadedFromUrlを依存関係から除外  // ウォレット接続時に受取アドレスを自動設定（URLから読み込まれていない場合）
   useEffect(() => {
     if (currentAddress && !recipient && !isLoadedFromUrl) {
       setRecipient(currentAddress);
     }
   }, [currentAddress, recipient, isLoadedFromUrl]);
 
-  // ネットワーク変更時に適切なデフォルト金額を設定
+  // ネットワーク変更時に適切なデフォルト金額を設定（URLから読み込まれていない場合のみ）
   useEffect(() => {
-    // URLから読み込まれていない場合のみ、全てのテストネットワークで1 JPYCに統一
-    if (!isLoadedFromUrl) {
-      setAmount('1'); // 表示用: 1 JPYC
-      console.log('🌐 ネットワーク変更: デフォルト金額を1円に設定');
-    } else {
+    // URLから読み込まれている場合は何もしない
+    if (isLoadedFromUrl) {
       console.log('🌐 ネットワーク変更: URLから読み込み済みのため金額は変更しません');
+      return;
     }
+    
+    // URLから読み込まれていない場合のみ、全てのテストネットワークで1 JPYCに統一
+    setAmount('1'); // 表示用: 1 JPYC
+    console.log('🌐 ネットワーク変更: デフォルト金額を1円に設定');
   }, [selectedNetwork, isLoadedFromUrl]);
 
   // 金額変更時に base units に変換
@@ -471,7 +476,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       const paymentRequirements: PaymentRequirements = {
         scheme: 'x402',
         network: currentConfig.chainId.toString(),
-        maxAmountRequired: amountInBaseUnits,
+        maxAmountRequired: amount, // JPY単位で送信
         resource: `/pay/${Date.now()}`, // ユニークなリソースID
         description: description || 'x402 Payment Request',
         mimeType: 'application/json',
