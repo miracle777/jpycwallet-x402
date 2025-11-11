@@ -230,11 +230,32 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
       console.log('🚀 x402決済フロー開始');
 
       // Step 0: ネットワークチェック
-      const currentNetwork = await signer.provider?.getNetwork();
-      console.log('Current network:', currentNetwork);
+      // provider.getNetwork()が機能しない場合は、signerのproviderから直接chainIdを取得
+      let currentChainId: bigint;
       
-      if (BigInt(currentNetwork?.chainId || 0) !== currentConfig.chainId) {
-        setError(`${currentConfig.name}ネットワークに接続してください。現在のネットワークでは決済できません。`);
+      try {
+        const currentNetwork = await signer.provider?.getNetwork();
+        console.log('Current network:', currentNetwork);
+        currentChainId = BigInt(currentNetwork?.chainId || 0);
+      } catch (e) {
+        console.log('getNetwork failed, trying alternative method:', e);
+        // WalletConnectなどでgetNetworkが失敗する場合は、JSONRPCを直接呼び出し
+        try {
+          const provider = signer.provider as any;
+          const chainIdHex = await provider.send('eth_chainId', []);
+          currentChainId = BigInt(chainIdHex);
+        } catch (e2) {
+          console.log('eth_chainId also failed:', e2);
+          setError('ネットワーク情報を取得できません。ウォレットの接続を確認してください。');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      console.log('Expected chainId:', currentConfig.chainId, 'Current chainId:', currentChainId);
+      
+      if (currentChainId !== currentConfig.chainId) {
+        setError(`${currentConfig.name}ネットワークに接続してください。現在のネットワークチェーンID: ${currentChainId}`);
         setLoading(false);
         return;
       }
@@ -335,13 +356,13 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   };
 
   return (
-    <div style={{ maxWidth: '700px', margin: '0 auto', padding: '20px' }}>
+    <div style={{ width: '100%', padding: '0px' }}>
       <div style={{ 
-        backgroundColor: 'white', 
+        backgroundColor: 'transparent', 
         borderRadius: '12px', 
-        padding: '30px', 
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
-        border: '1px solid #e5e7eb' 
+        padding: '0px', 
+        boxShadow: 'none', 
+        border: 'none' 
       }}>
         <h2 style={{ margin: '0 0 25px 0', color: '#1f2937', fontSize: '24px', fontWeight: 'bold', textAlign: 'center' }}>
           💳 x402 Simple Payment
