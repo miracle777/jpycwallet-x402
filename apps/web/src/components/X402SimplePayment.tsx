@@ -379,7 +379,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
                 fontSize: '12px', 
                 color: '#6b7280' 
               }}>
-                ≈ {(parseFloat(amount || '0') / 1000000).toFixed(6)} JPYC
+                ≈ {(parseFloat(amount || '0') / 1000000).toFixed(0)} JPYC
               </div>
             </div>
           </div>

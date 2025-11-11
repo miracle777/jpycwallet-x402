@@ -225,9 +225,9 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
       if (!balanceCheck.sufficient) {
         setError(
           `JPYC残高が不足しています。\n` +
-          `必要金額: ${balanceCheck.required.toFixed(6)} JPYC\n` +
-          `現在残高: ${balanceCheck.currentBalance.toFixed(6)} JPYC\n` +
-          `不足分: ${(balanceCheck.required - balanceCheck.currentBalance).toFixed(6)} JPYC`
+          `必要金額: ${balanceCheck.required.toFixed(0)} JPYC\n` +
+          `現在残高: ${balanceCheck.currentBalance.toFixed(0)} JPYC\n` +
+          `不足分: ${(balanceCheck.required - balanceCheck.currentBalance).toFixed(0)} JPYC`
         );
         return;
       }
@@ -298,7 +298,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
         `🎉 x402サブスクリプション契約完了！\n\n` +
         `📋 Contract Details:\n` +
         `• Plan: ${plan.name}\n` +
-        `• Amount: ${(parseFloat(plan.amount) / 1000000).toFixed(6)} JPYC\n` +
+        `• Amount: ${(parseFloat(plan.amount) / 1000000).toFixed(0)} JPYC\n` +
         `• Interval: ${getIntervalDisplay(plan.interval)}\n` +
         `• Merchant: ${plan.merchantName}\n` +
         `• Duration: ${plan.duration}日\n\n` +
@@ -545,7 +545,7 @@ const X402Subscription: React.FC<X402SubscriptionProps> = ({
                     fontSize: '12px', 
                     color: '#6b7280' 
                   }}>
-                    ≈ {(parseFloat(plan.amount || '0') / 1000000).toFixed(6)} JPYC
+                    ≈ {(parseFloat(plan.amount || '0') / 1000000).toFixed(0)} JPYC
                   </div>
                 </div>
               </div>
