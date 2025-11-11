@@ -185,66 +185,61 @@ function App() {
           </p>
         </div>
 
-        {/* メインコンテンツエリア */}
-        <div className="max-w-7xl mx-auto w-full">
-          {!walletData.address ? (
-            /* 未接続時: 中央配置 */
-            <div className="max-w-md mx-auto">
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <AmbireLogin 
-                  onConnect={handleWalletConnect} 
-                  onDisconnect={handleWalletDisconnect}
-                />
-              </div>
+        {/* メインコンテンツエリア - 常に2カラムレイアウト */}
+        <div className="w-full" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', gap: '24px', width: '100%' }}>
+            {/* 左カラム: メイン操作エリア（2/3幅） */}
+            <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: '0' }}>
               
-              {/* ネットワーク選択 */}
-              <div className="mt-6">
-                <NetworkSelector
-                  currentNetwork={selectedNetwork}
-                  onNetworkChange={handleNetworkChange}
-                  disabled={!!walletData.address}
-                />
-              </div>
-              
-              {/* テスト用JPYC取得ガイド */}
-              <div className="mt-6">
-                <FaucetGuide
-                  chainId={selectedNetwork === 'polygon' ? 137 : 
-                           selectedNetwork === 'polygon-amoy' ? 80002 :
-                           selectedNetwork === 'sepolia' ? 11155111 :
-                           selectedNetwork === 'avalanche-fuji' ? 43113 : undefined}
-                  userAddress={walletData.address || undefined}
-                />
-              </div>
-              
-              <div className="text-center text-gray-600 mt-6">
-                <p>ウォレットを接続して開始</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  ※ Polygon Amoy・Ethereum Sepolia・Avalanche Fuji対応
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* 接続済み: 2カラムレイアウト */
-            <div style={{ display: 'flex', gap: '24px', width: '100%' }}>
-              {/* 左カラム: 設定・操作エリア（2/3幅） */}
-              <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: '0' }}>
-                {/* ウォレット情報サマリー */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-lg font-semibold mb-3">接続済みウォレット</h2>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-sm text-gray-500">アカウント:</p>
-                      <p className="font-mono text-xs break-all text-gray-700">{walletData.address}</p>
-                    </div>
-                    <button
-                      onClick={handleWalletDisconnect}
-                      className="mt-3 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
-                    >
-                      ❌ 切断
-                    </button>
+              {!walletData.address ? (
+                /* 未接続時: ウォレット接続UI */
+                <>
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <AmbireLogin 
+                      onConnect={handleWalletConnect} 
+                      onDisconnect={handleWalletDisconnect}
+                    />
                   </div>
-                </div>
+                  
+                  {/* ネットワーク選択 */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <NetworkSelector
+                      currentNetwork={selectedNetwork}
+                      onNetworkChange={handleNetworkChange}
+                      disabled={!!walletData.address}
+                    />
+                  </div>
+                  
+                  {/* テスト用JPYC取得ガイド */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <FaucetGuide
+                      chainId={selectedNetwork === 'polygon' ? 137 : 
+                               selectedNetwork === 'polygon-amoy' ? 80002 :
+                               selectedNetwork === 'sepolia' ? 11155111 :
+                               selectedNetwork === 'avalanche-fuji' ? 43113 : undefined}
+                      userAddress={walletData.address || undefined}
+                    />
+                  </div>
+                </>
+              ) : (
+                /* 接続済み時: フル機能 */
+                <>
+                  {/* ウォレット情報サマリー */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h2 className="text-lg font-semibold mb-3">接続済みウォレット</h2>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm text-gray-500">アカウント:</p>
+                        <p className="font-mono text-xs break-all text-gray-700">{walletData.address}</p>
+                      </div>
+                      <button
+                        onClick={handleWalletDisconnect}
+                        className="mt-3 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
+                      >
+                        ❌ 切断
+                      </button>
+                    </div>
+                  </div>
 
                 {/* ネットワーク選択 */}
                 <div className="bg-white rounded-lg shadow-md p-6">
@@ -319,7 +314,7 @@ function App() {
                   {activeTab === 'payment' && (
                     <PaymentRequestSimple
                       onQRGenerated={handleQRGenerated}
-                      currentAddress={walletData.address}
+                      currentAddress={walletData.address || undefined}
                     />
                   )}
 
@@ -378,42 +373,54 @@ function App() {
                     />
                   )}
                 </div>
-              </div>
+                </>
+              )}
+            </div>
 
-              {/* 右カラム: QRコード表示エリア（1/3幅） */}
-              <div style={{ flex: '1', display: 'flex', flexDirection: 'column', minWidth: '250px' }}>
-                <div className="sticky top-8">{/* 適度なトップスペース */}
-                  {qrCodeData ? (
-                    <div className="qr-code-container"> {/* 専用コンテナクラス追加 */}
-                      <QRCodeDisplay 
-                        qrData={qrCodeData}
-                        amount={paymentAmount}
-                        merchantInfo={merchantInfo}
-                        onRefresh={handleQRRefresh}
-                      />
+            {/* 右カラム: サイドバー（1/3幅） */}
+            <div style={{ flex: '1', display: 'flex', flexDirection: 'column', minWidth: '250px' }}>
+              <div className="sticky top-8">
+                {!walletData.address ? (
+                  /* 未接続時: ガイド */
+                  <div className="bg-white rounded-lg shadow-md p-6 text-center">
+                    <h2 className="text-xl font-semibold mb-4">はじめに</h2>
+                    <div className="text-left text-gray-600 space-y-3">
+                      <p>👆 左側でウォレットを接続してください</p>
+                      <p>🌐 お好みのネットワークを選択</p>
+                      <p>💰 テスト用JPYCを取得</p>
+                      <p>🚀 各種決済機能をお試しください</p>
                     </div>
-                  ) : (
-                    /* QRコード未生成時のプレースホルダー */
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                      <h2 className="text-xl font-semibold mb-4">QRコード表示エリア</h2>
-                      <div className="qr-code-container">
-                        <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                          <div className="text-center text-gray-500">
-                            <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m-2 0h-2m2-4h2m2 0V9a3 3 0 00-3-3H9a3 3 0 00-3 3v8.1m6-2.1h2m-2 0V9" />
-                            </svg>
-                            <p className="text-lg font-medium">QRコード未生成</p>
-                            <p className="text-sm mt-1 hidden-mobile">左側で決済内容を設定して<br />QRコードを生成してください</p>
-                            <p className="text-sm mt-1 hidden-desktop">上記で決済内容を設定して<br />QRコードを生成してください</p>
-                          </div>
+                  </div>
+                ) : qrCodeData ? (
+                  /* QRコード表示エリア */
+                  <div className="qr-code-container">
+                    <QRCodeDisplay 
+                      qrData={qrCodeData}
+                      amount={paymentAmount}
+                      merchantInfo={merchantInfo}
+                      onRefresh={handleQRRefresh}
+                    />
+                  </div>
+                ) : (
+                  /* QRコード未生成時のプレースホルダー */
+                  <div className="bg-white rounded-lg shadow-md p-6 text-center">
+                    <h2 className="text-xl font-semibold mb-4">QRコード表示エリア</h2>
+                    <div className="qr-code-container">
+                      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                        <div className="text-center text-gray-500">
+                          <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m-2 0h-2m2-4h2m2 0V9a3 3 0 00-3-3H9a3 3 0 00-3 3v8.1m6-2.1h2m-2 0V9" />
+                          </svg>
+                          <p className="text-lg font-medium">QRコード未生成</p>
+                          <p className="text-sm mt-1">QR決済タブで決済内容を設定して<br />QRコードを生成してください</p>
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

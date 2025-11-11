@@ -133,3 +133,22 @@ body {
     min-height: 200px;
   }
 }
+
+/* 2カラムレイアウト強制 */
+@media (min-width: 1024px) {
+  /* 接続済み時の2カラムレイアウトを強制 */
+  div[style*="flex: 2"] {
+    flex: 2 !important;
+    min-width: 0 !important;
+  }
+  
+  div[style*="flex: 1"][style*="minWidth: '250px'"] {
+    flex: 1 !important;
+    min-width: 250px !important;
+  }
+  
+  /* レイアウト切り替え時の遷移を無効化 */
+  div[style*="display: flex"] {
+    transition: none !important;
+  }
+}

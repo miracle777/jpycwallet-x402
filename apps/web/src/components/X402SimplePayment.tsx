@@ -443,6 +443,61 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
     setPaymentPayload(null);
   };
 
+  // 請求URL生成機能
+  const generatePaymentRequest = () => {
+    try {
+      setError('');
+      
+      if (!recipient || !amount) {
+        setError('受取アドレスと金額を入力してください');
+        return;
+      }
+
+      // PaymentRequirements を生成
+      const paymentRequirements: PaymentRequirements = {
+        scheme: 'x402',
+        network: currentConfig.chainId.toString(),
+        maxAmountRequired: amountInBaseUnits,
+        resource: `/pay/${Date.now()}`, // ユニークなリソースID
+        description: description || 'x402 Payment Request',
+        mimeType: 'application/json',
+        payTo: recipient,
+        maxTimeoutSeconds: 3600, // 1時間
+        asset: currentConfig.jpycAddress,
+        extra: {
+          name: 'jpycwallet-x402',
+          version: '1.0.0'
+        }
+      };
+
+      // Base64エンコード
+      const encodedRequest = btoa(JSON.stringify(paymentRequirements));
+      
+      // URL生成
+      const baseUrl = window.location.origin;
+      const paymentUrl = `${baseUrl}/pay?request=${encodedRequest}`;
+      
+      // 成功メッセージとURL表示
+      setSuccess(`📋 請求URL生成完了！
+
+🔗 決済URL:
+${paymentUrl}
+
+💡 この URLを支払者に送信してください。
+支払者がアクセスすると、決済画面が表示されます。`);
+      
+      // PaymentRequirements を状態に保存
+      setPaymentRequirements(paymentRequirements);
+      
+      console.log('📋 PaymentRequirements generated:', paymentRequirements);
+      console.log('🔗 Payment URL:', paymentUrl);
+      
+    } catch (error) {
+      console.error('❌ Payment request generation error:', error);
+      setError(`請求URL生成エラー: ${(error as Error).message}`);
+    }
+  };
+
   return (
     <div style={{ width: '100%', padding: '0px' }}>
       <div style={{ 
@@ -460,17 +515,16 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #0ea5e9', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <span style={{ fontSize: '16px' }}>📋</span>
-            <span style={{ fontWeight: '600', color: '#0c4a6e' }}>x402 Payment Protocol 決済フロー</span>
+            <span style={{ fontWeight: '600', color: '#0c4a6e' }}>x402 Payment Protocol 統合テスト</span>
           </div>
           <div style={{ fontSize: '14px', color: '#0c4a6e', lineHeight: '1.6' }}>
             <div style={{ marginBottom: '10px' }}>
-              <strong>決済プロセス:</strong>
+              <strong>このページでできること:</strong>
             </div>
             <div style={{ paddingLeft: '15px' }}>
-              1. <strong>PaymentRequirements生成</strong> - 決済要件を定義<br/>
-              2. <strong>支払者にURL共有</strong> - 生成されたリンクを送付<br/>
-              3. <strong>PaymentPayload作成</strong> - 支払者が決済内容を確認・署名<br/>
-              4. <strong>Blockchain Transaction</strong> - ブロックチェーンで実行
+              1. <strong>🔗 請求URL生成</strong> - マーチャント側: 決済要件をURLで発行<br/>
+              2. <strong>💳 決済実行</strong> - 支払者側: 同じページで決済を実行<br/>
+              3. <strong>🔄 フルテスト</strong> - URL発行→決済実行の一連の流れを確認
             </div>
           </div>
         </div>
@@ -649,12 +703,37 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
         )}
 
         {/* 実行ボタン */}
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+          {/* 請求URL生成ボタン */}
+          <button
+            onClick={generatePaymentRequest}
+            disabled={!currentAddress || !recipient || !amount}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: (!currentAddress || !recipient || !amount) ? '#9ca3af' : '#10b981',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: (!currentAddress || !recipient || !amount) ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            <span>🔗</span>
+            請求URL生成（マーチャント側）
+          </button>
+
+          {/* 決済実行ボタン */}
           <button
             onClick={executeX402Payment}
             disabled={loading || !currentAddress}
             style={{
-              flex: 1,
+              width: '100%',
               padding: '16px',
               borderRadius: '8px',
               border: 'none',
@@ -682,7 +761,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
             ) : (
               <>
                 <span>💳</span>
-                x402決済を実行
+                x402決済を実行（支払者側）
               </>
             )}
           </button>
@@ -690,12 +769,13 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
           <button
             onClick={resetForm}
             style={{
-              padding: '16px 20px',
+              width: '100%',
+              padding: '12px 20px',
               borderRadius: '8px',
               border: '1px solid #d1d5db',
               backgroundColor: 'white',
               color: '#374151',
-              fontSize: '16px',
+              fontSize: '14px',
               fontWeight: '500',
               cursor: 'pointer'
             }}
