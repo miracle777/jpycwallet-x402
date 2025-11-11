@@ -56,7 +56,7 @@ const X402SimplePayment: React.FC<X402SimplePaymentProps> = ({
   signer,
   onPaymentComplete,
 }) => {
-  const [amount, setAmount] = useState('1000000'); // デフォルト: 1 JPYC or 0.001 ETH in base units
+  const [amount, setAmount] = useState('1000000'); // デフォルト: 1 JPYC (1000000 base units)
   const [recipient, setRecipient] = useState('');
   const [description, setDescription] = useState('x402 Simple Payment Test');
   const [selectedNetwork, setSelectedNetwork] = useState<'polygon-amoy' | 'sepolia' | 'sepolia-official' | 'avalanche-fuji'>('sepolia');
