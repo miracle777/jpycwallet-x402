@@ -935,6 +935,7 @@ const QRScanner = lazy(() => import('./components/QRScanner'));
 - **関連プロジェクト**:
   - [jpycwallet.dev](https://github.com/miracle777/jpycwallet.dev) - 店舗側決済受付
   - [jpyc-payment-scanner](https://github.com/miracle777/jpyc-payment-scanner) - 顧客側決済スキャナー
+  このプログラムでQRコードを読み取り決済すると、このプログラムで設定した店舗情報を利用して履歴を残すことができます。
 
 ## 参考リンク
 
