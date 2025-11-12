@@ -3,7 +3,7 @@ title: "JPYC × Ambire Wallet でガスレス決済＆x402対応決済システ�
 emoji: "💳"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["web3", "blockchain", "ethereum", "jpyc", "react"]
-published: false
+published: true # true: 公開 / false: 下書き
 ---
 
 # はじめに
@@ -945,4 +945,6 @@ const QRScanner = lazy(() => import('./components/QRScanner'));
 
 ---
 
-最後まで読んでいただき、ありがとうございました！質問やフィードバックがあれば、GitHubのIssueでお気軽にどうぞ。
+最後まで読んでいただき、ありがとうございました！
+この記事は、プロジェクト制作過程の内容をGitHub Copilotを使いまとめて作成しました。
+
