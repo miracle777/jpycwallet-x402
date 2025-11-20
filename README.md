@@ -9,6 +9,7 @@ Ambire WalletとJPYC（JPY Coin）を使ったガスレス決済システムの�
 こちらは、EIP-681に対応していますので、MetaMaskのアプリでも読み取ってもらえるQRコードの発行が可能です。
 SBTも、発行できます。
 ただし、ライブデモは、SBTの発行は、制限されています。
+https://github.com/miracle777/SBT-JPYC-Pay
 
 ## ⚠️ 免責事項・重要な注意事項
 
